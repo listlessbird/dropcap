@@ -2,6 +2,7 @@
 // JSON line. A cached APK is reused when native inputs are unchanged; otherwise it builds once.
 //
 //   vp run mobile:install android [serial] [--rebuild]
+//   vp run mobile:install android --abi x86_64     fill the cache without a connected device
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeModule from "node:module";
@@ -22,7 +23,9 @@ const adbPath = NodePath.join(sdk, "platform-tools", "adb");
 
 const [platform, ...rest] = process.argv.slice(2);
 const rebuild = rest.includes("--rebuild");
-const requestedSerial = rest.find((arg) => !arg.startsWith("--"));
+const abiFlag = rest.indexOf("--abi");
+const requestedAbi = abiFlag === -1 ? undefined : rest[abiFlag + 1];
+const requestedSerial = rest.find((arg, index) => !arg.startsWith("--") && index !== abiFlag + 1);
 
 const finish = (result: Record<string, string | boolean>, code = 0): never => {
   console.log(JSON.stringify(result));
@@ -45,9 +48,10 @@ const devices = run(adbPath, ["devices"])
   .map((line) => line.split("\t"))
   .flatMap(([id, state]) => (id && state === "device" ? [id] : []));
 
-const serial = requestedSerial ?? (devices.length === 1 ? devices[0] : undefined);
+const candidate = requestedSerial ?? (devices.length === 1 ? devices[0] : undefined);
+const serial = candidate && devices.includes(candidate) ? candidate : undefined;
 
-if (!serial || !devices.includes(serial)) {
+if (!serial && !requestedAbi) {
   fail(
     devices.length === 0
       ? "No Android device is connected."
@@ -68,23 +72,26 @@ const fingerprint = (): string => {
 };
 
 const hash = fingerprint();
-const abi = adb(serial, "shell", "getprop", "ro.product.cpu.abi");
+const abi = requestedAbi ?? (serial ? adb(serial, "shell", "getprop", "ro.product.cpu.abi") : "");
 const apk = NodePath.join(apkCache, `${hash}-${abi}.apk`);
+
 const recordPath = NodePath.join(recordCache, `${serial}.json`);
 
-// `pm path` exits non-zero when the package is missing.
-const installed = NodeChildProcess.spawnSync(
-  adbPath,
-  ["-s", serial, "shell", "pm", "path", DEV_PACKAGE],
-  {
-    encoding: "utf8",
-  },
-).stdout.startsWith("package:");
+if (serial && !rebuild) {
+  // `pm path` exits non-zero when the package is missing.
+  const installed = NodeChildProcess.spawnSync(
+    adbPath,
+    ["-s", serial, "shell", "pm", "path", DEV_PACKAGE],
+    { encoding: "utf8" },
+  ).stdout.startsWith("package:");
 
-const record = NodeFS.existsSync(recordPath) ? NodeFS.readFileSync(recordPath, "utf8").trim() : "";
+  const record = NodeFS.existsSync(recordPath)
+    ? NodeFS.readFileSync(recordPath, "utf8").trim()
+    : "";
 
-if (!rebuild && installed && record === hash) {
-  finish({ status: "compatible", installed: false, fingerprint: hash, serial });
+  if (installed && record === hash) {
+    finish({ status: "compatible", installed: false, fingerprint: hash, serial });
+  }
 }
 
 // Prebuild deletes android/, which would throw away Gradle and CMake caches keyed by their inputs.
@@ -148,6 +155,8 @@ if (rebuild || !NodeFS.existsSync(apk)) {
     apk,
   );
 }
+
+if (!serial) finish({ status: "built", installed: false, source, fingerprint: hash, abi, apk });
 
 adb(serial, "install", "-r", apk);
 
