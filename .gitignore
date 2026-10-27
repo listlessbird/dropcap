@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+*.log
+*.tsbuildinfo
+.env
+.env*.local
+.DS_Store
+.idea/
+.t3
+.plans/
+.vitest-*
+__screenshots__/

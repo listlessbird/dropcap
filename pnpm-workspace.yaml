@@ -1,0 +1,32 @@
+packages:
+  - apps/*
+
+onlyBuiltDependencies:
+  - esbuild
+  - "@tsc-rs/typescript"
+
+catalog:
+  "@types/node": 24.12.4
+  typescript: npm:@tsc-rs/typescript@0.8.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vite-plus: 1.4.0
+
+# The global minimumReleaseAge holds back fresh releases. Pin exact versions here when we adopt one early.
+minimumReleaseAgeExclude:
+  - vite-plus@1.4.0
+  - "@voidzero-dev/*"
+  - "@oxc-project/*"
+  - "oxlint*"
+  - "oxfmt*"
+  - "@tsc-rs/*"
+
+overrides:
+  vite: "catalog:"
+  vite-plus: "catalog:"
+
+peerDependencyRules:
+  allowAny:
+    - typescript
+    - vite
+  allowedVersions:
+    vite: "*"
