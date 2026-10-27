@@ -1,7 +1,7 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { createContext, use, type ReactNode } from "react";
-import { AppState, Appearance, useColorScheme } from "react-native";
+import { AppState, Appearance, StatusBar, useColorScheme } from "react-native";
 import { ScopedTheme, ScopedVariables } from "uniwind";
 
 import {
@@ -109,6 +109,8 @@ export function AppearanceProvider(props: { readonly children: ReactNode }) {
 
   return (
     <AppearanceContext value={value}>
+      {/* Edge-to-edge draws the app under the status bar, so its icons follow the app's appearance. */}
+      <StatusBar barStyle={appearance === "dark" ? "light-content" : "dark-content"} />
       <ScopedTheme theme={appearance}>
         <ScopedVariables variables={variables}>{props.children}</ScopedVariables>
       </ScopedTheme>

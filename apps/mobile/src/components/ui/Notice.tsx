@@ -1,0 +1,74 @@
+import { Pressable, View } from "react-native";
+
+import { cn } from "../../lib/cn";
+import { AppText } from "./AppText";
+import { SymbolView, type AppSymbolName } from "./AppSymbol";
+
+export function Notice(props: {
+  readonly message: string;
+  readonly tone?: "default" | "danger";
+  readonly icon?: AppSymbolName;
+  readonly iconTone?: "default" | "danger";
+  readonly floating?: boolean;
+  readonly onDismiss?: () => void;
+  readonly dismissLabel?: string;
+}) {
+  const danger = props.tone === "danger";
+
+  const content = (
+    <View className="flex-row items-start gap-3">
+      {props.icon ? (
+        <View className="pt-0.5">
+          <SymbolView
+            name={props.icon}
+            size={16}
+            tintColorClassName={
+              danger || props.iconTone === "danger"
+                ? "accent-danger-foreground"
+                : "accent-icon-muted"
+            }
+          />
+        </View>
+      ) : null}
+      <AppText
+        selectable
+        textRole="footnote"
+        accessibilityLiveRegion="polite"
+        className={cn(
+          "min-w-0 flex-1",
+          danger ? "text-danger-foreground" : "text-foreground",
+          !props.floating && "font-t3-medium",
+        )}
+      >
+        {props.message}
+      </AppText>
+      {props.onDismiss ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={props.dismissLabel ?? "Dismiss message"}
+          onPress={props.onDismiss}
+          hitSlop={10}
+          className="min-h-6 min-w-6 items-center justify-center active:opacity-60"
+        >
+          <SymbolView
+            name="x"
+            size={14}
+            tintColorClassName={danger ? "accent-danger-foreground" : "accent-icon-muted"}
+          />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View
+      className={cn(
+        "rounded-2xl border px-3.5 py-3",
+        danger ? "border-danger-border bg-danger" : "border-border bg-card",
+        props.floating && "p-4",
+      )}
+    >
+      {content}
+    </View>
+  );
+}

@@ -1,13 +1,16 @@
 import "../global.css";
 
 import { RegistryContext } from "@effect/atom-react";
+import { NavigationContainer } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { Pressable, StatusBar, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import * as Dialog from "./components/ui/Dialog";
+import { OverlayPortalHost } from "./components/ui/OverlayPortal";
+import { ComponentCatalogScreen } from "./features/development/ComponentCatalogScreen";
 import {
   AppearanceProvider,
   installAppearanceRuntime,
@@ -17,7 +20,6 @@ import {
   disposeOnFoundationReplace,
   type FoundationHotModule,
 } from "./lib/foundation-fast-refresh";
-import { THEME_IDS } from "./lib/theme";
 import { appAtomRegistry } from "./state/atom-registry";
 
 declare const module: { readonly hot?: FoundationHotModule } | undefined;
@@ -41,36 +43,6 @@ function SplashScreenCoordinator() {
   return null;
 }
 
-const THEME_MODES = ["system", "light", "dark"] as const;
-
-function ThemeProbe() {
-  const { appearance, themeId, themeMode, setThemeId, setThemeMode } = useAppearance();
-  const nextMode = THEME_MODES[(THEME_MODES.indexOf(themeMode) + 1) % THEME_MODES.length];
-  const nextTheme = THEME_IDS[(THEME_IDS.indexOf(themeId) + 1) % THEME_IDS.length];
-
-  return (
-    <View className="flex-1 items-center justify-center gap-4 bg-screen px-6">
-      <StatusBar barStyle={appearance === "dark" ? "light-content" : "dark-content"} />
-      <Text className="text-2xl text-foreground">Kindle Drop</Text>
-      <Text className="text-sm text-foreground-muted">
-        {themeId} · {themeMode} ({appearance})
-      </Text>
-      <Pressable
-        className="rounded-2xl bg-primary px-5 py-3 active:opacity-70"
-        onPress={() => nextMode && setThemeMode(nextMode)}
-      >
-        <Text className="text-base text-primary-foreground">Mode: {nextMode}</Text>
-      </Pressable>
-      <Pressable
-        className="rounded-2xl border border-border bg-card px-5 py-3 active:opacity-70"
-        onPress={() => nextTheme && setThemeId(nextTheme)}
-      >
-        <Text className="text-base text-foreground">Theme: {nextTheme}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 export default function App() {
   return (
     <RegistryContext value={appAtomRegistry}>
@@ -79,7 +51,11 @@ export default function App() {
           <KeyboardProvider>
             <AppearanceProvider>
               <SplashScreenCoordinator />
-              <ThemeProbe />
+              <NavigationContainer>
+                <ComponentCatalogScreen />
+              </NavigationContainer>
+              <Dialog.Host />
+              <OverlayPortalHost />
             </AppearanceProvider>
           </KeyboardProvider>
         </SafeAreaProvider>
