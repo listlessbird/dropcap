@@ -9,6 +9,7 @@ onlyBuiltDependencies:
 
 catalog:
   "@oxlint/plugins": 1.89.0
+  "@effect/atom-react": 4.0.5
   "@effect/platform-node": 4.0.5
   "@effect/vitest": 4.0.5
   effect: 4.0.5
