@@ -49,6 +49,7 @@ adb shell am start -a android.intent.action.VIEW \
 
 ## Drive and capture
 
+- Open a screen directly with its deep link from `apps/mobile/src/Stack.tsx`, for example `adb shell am start -a android.intent.action.VIEW -d kindledrop-dev://settings`. It is more reliable than tapping through, and it exercises the linking config.
 - Screenshot: `adb exec-out screencap -p > <file>.png`.
 - Tap: `adb shell input tap <x> <y>` in device pixels. Read coordinates from a screenshot or `adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml`.
 - Text: `adb shell input text '<text>'`. Back: `adb shell input keyevent KEYCODE_BACK`.

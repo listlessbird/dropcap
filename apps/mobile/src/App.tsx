@@ -1,7 +1,7 @@
 import "../global.css";
 
 import { RegistryContext } from "@effect/atom-react";
-import { NavigationContainer } from "@react-navigation/native";
+import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -10,7 +10,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import * as Dialog from "./components/ui/Dialog";
 import { OverlayPortalHost } from "./components/ui/OverlayPortal";
-import { ComponentCatalogScreen } from "./features/development/ComponentCatalogScreen";
 import {
   AppearanceProvider,
   installAppearanceRuntime,
@@ -20,6 +19,7 @@ import {
   disposeOnFoundationReplace,
   type FoundationHotModule,
 } from "./lib/foundation-fast-refresh";
+import { Navigation, useNavigationTheme } from "./Stack";
 import { appAtomRegistry } from "./state/atom-registry";
 
 declare const module: { readonly hot?: FoundationHotModule } | undefined;
@@ -43,6 +43,13 @@ function SplashScreenCoordinator() {
   return null;
 }
 
+// Paths come from each screen's `linking` in Stack.tsx. The prefix carries the variant's scheme.
+const linking = { enabled: "auto" as const, prefixes: [Linking.createURL("/")] };
+
+function AppNavigation() {
+  return <Navigation linking={linking} theme={useNavigationTheme()} />;
+}
+
 export default function App() {
   return (
     <RegistryContext value={appAtomRegistry}>
@@ -51,9 +58,7 @@ export default function App() {
           <KeyboardProvider>
             <AppearanceProvider>
               <SplashScreenCoordinator />
-              <NavigationContainer>
-                <ComponentCatalogScreen />
-              </NavigationContainer>
+              <AppNavigation />
               <Dialog.Host />
               <OverlayPortalHost />
             </AppearanceProvider>

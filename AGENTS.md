@@ -38,7 +38,8 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 
 ## Where code lives
 
-- `apps/mobile`: the Expo app. `src/components/ui` is the UI kit, `src/features/<feature>` holds screens and feature logic, `src/state` holds atoms, `src/persistence` holds storage services, and `src/lib` holds small shared modules.
+- `apps/mobile`: the Expo app. `src/Stack.tsx` declares every screen and its deep link path. `src/components/ui` is the UI kit, `src/features/<feature>` holds screens and feature logic, `src/state` holds atoms, `src/persistence` holds storage services, and `src/lib` holds small shared modules.
+- The UI kit is Android-only: Compose controls through `@expo/ui` and Tabler icons through `AppSymbol`. Its dev-only catalog (`kindledrop-dev://dev/components`) renders every component with the theme controls on top. Add a new kit component to it.
 - `oxlint-plugin-kd`: this repo's lint rules, ported from T3 Code.
 - `oxlint-plugin-anti-slop`: vendored [anti-slop](https://github.com/dmmulroy/anti-slop) rules. Update it with the `install-anti-slop` skill; never overwrite it. Provenance is in its `UPSTREAM.md`.
 - `scripts`: repo tooling (`check-changed`, `setup-worktree`, `sync-reference-repos`).

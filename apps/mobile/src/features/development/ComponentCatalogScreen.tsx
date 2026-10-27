@@ -45,13 +45,9 @@ export function ComponentCatalogScreen() {
   return (
     <ScrollView
       className="flex-1 bg-screen"
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }}
+      contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 32 }}
     >
       <View className="gap-6 px-4">
-        <AppText textRole="largeTitle" className="font-t3-bold text-foreground">
-          Components
-        </AppText>
-
         <SegmentedControl options={MODE_OPTIONS} selected={themeMode} onSelect={setThemeMode} />
         <SegmentedControl
           options={THEME_OPTIONS.map((option) => ({ value: option.id, label: option.label }))}
