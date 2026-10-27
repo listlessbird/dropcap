@@ -10,3 +10,4 @@ node_modules/
 .plans/
 .vitest-*
 __screenshots__/
+.repos/

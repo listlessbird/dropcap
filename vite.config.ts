@@ -1,7 +1,19 @@
 import "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
 
+// Agent tooling and vendored plugins are not application source.
+const AGENT_DIRS = [
+  ".agent/**",
+  ".agents/**",
+  ".claude/**",
+  ".codex/**",
+  ".cursor/**",
+  ".opencode/**",
+];
+
 const GENERATED = [
+  ...AGENT_DIRS,
+  "oxlint-plugin-anti-slop/**",
   ".repos/**",
   "node_modules",
   "pnpm-lock.yaml",
@@ -29,6 +41,11 @@ export default defineConfig({
   lint: {
     ignorePatterns: [".repos", ...GENERATED],
     plugins: ["eslint", "oxc", "react", "unicorn", "typescript"],
+    jsPlugins: [
+      "./oxlint-plugin-kd/index.ts",
+      { name: "anti-slop", specifier: "./oxlint-plugin-anti-slop/index.ts" },
+      { name: "anti-slop-effect", specifier: "./oxlint-plugin-anti-slop/effect/index.ts" },
+    ],
     categories: {
       correctness: "warn",
       suspicious: "warn",
@@ -82,6 +99,75 @@ export default defineConfig({
       "eslint/no-shadow": "off",
       "eslint/no-await-in-loop": "off",
       "eslint/no-underscore-dangle": "off",
+      "anti-slop/no-array-filter-map": "error",
+      "anti-slop/no-reduce-accumulator-copy": "error",
+      "anti-slop/no-chained-type-assertions": "error",
+      "anti-slop/no-conditional-empty-object-spread": "error",
+      "anti-slop/no-known-value-widening": "error",
+      "anti-slop/no-module-mocking": "error",
+      "anti-slop/no-object-parameters": "error",
+      "anti-slop/no-reflect-apply": "error",
+      "anti-slop/no-reflect-get": "error",
+      "anti-slop/no-runtime-typeof": "error",
+      "anti-slop/no-shape-in-symbol-names": "error",
+      "anti-slop/no-unknown-parameters": "error",
+      "anti-slop/no-unknown-returns": "error",
+      "anti-slop/no-unknown-type-aliases": "error",
+      "anti-slop/no-unsafe-dictionary-type": "error",
+      "anti-slop/no-widen-then-assert": "error",
+      "anti-slop/require-readable-spacing": "error",
+      "anti-slop/require-safety-comment-for-type-assertion": "error",
+      "anti-slop-effect/no-manual-effect-error-tag": "error",
+      "anti-slop-effect/no-manual-tag-comparison": "error",
+      "anti-slop-effect/no-manual-tagged-construction": "error",
+      "anti-slop-effect/no-service-constructor-imports": "error",
+      "anti-slop-effect/prefer-effect-match": "error",
+      "kd/namespace-node-imports": "error",
+      "kd/no-inline-schema-compile": "error",
+      "kd/no-low-value-comments": "error",
+      "kd/no-manual-effect-runtime-in-tests": "error",
+      "kd/prefer-catch-tags": "error",
+      "kd/prefer-effect-fn": "error",
+      "kd/require-suppression-reason": "error",
+      // These check the filename and only fire in test files.
+      "kd/no-polling-loop-in-tests": "error",
+      "kd/no-real-time-wait-in-tests": "error",
+      "kd/no-test-in-loop": "error",
+      "kd/no-test-timeout-or-unreasoned-skip": "error",
+      "kd/no-wall-clock-in-tests": "error",
     },
+    overrides: [
+      {
+        // Lint rules parse raw ESTree nodes, so unknown inputs and typeof narrowing are their boundary.
+        files: ["oxlint-plugin-kd/**"],
+        rules: {
+          "anti-slop/no-unknown-parameters": "off",
+          "anti-slop/no-runtime-typeof": "off",
+          "anti-slop/require-safety-comment-for-type-assertion": "off",
+        },
+      },
+      {
+        files: ["**/*.{test,spec}.{ts,tsx}", "**/{test,tests,testing,fixtures}/**"],
+        rules: { "kd/prefer-effect-fn": "off" },
+      },
+      {
+        files: ["apps/mobile/src/**/*.{ts,tsx}"],
+        rules: {
+          "kd/no-hookless-use-function": "error",
+          "kd/no-manual-memo": "error",
+          "kd/no-mobile-uniwind-theme-escape-hatches": "error",
+          "kd/react-effect-budget": "error",
+        },
+      },
+      {
+        // ESNext types allow APIs that Hermes lacks. Node-run tests are exempt.
+        files: ["apps/mobile/src/**"],
+        excludeFiles: ["**/*.test.ts", "**/*.test.tsx"],
+        rules: {
+          "kd/no-hermes-unsupported-apis": "error",
+          "kd/no-em-dash-copy": "error",
+        },
+      },
+    ],
   },
 });

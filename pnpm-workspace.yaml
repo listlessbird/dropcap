@@ -1,11 +1,16 @@
 packages:
   - apps/*
+  - oxlint-plugin-kd
 
 onlyBuiltDependencies:
   - esbuild
   - "@tsc-rs/typescript"
 
 catalog:
+  "@oxlint/plugins": 1.89.0
+  "@effect/platform-node": 4.0.5
+  "@effect/vitest": 4.0.5
+  effect: 4.0.5
   "@types/node": 24.12.4
   typescript: npm:@tsc-rs/typescript@0.8.0
   vite: npm:@voidzero-dev/vite-plus-core@1.4.0
@@ -13,6 +18,8 @@ catalog:
 
 # The global minimumReleaseAge holds back fresh releases. Pin exact versions here when we adopt one early.
 minimumReleaseAgeExclude:
+  - "@effect/*"
+  - effect@4.0.5
   - vite-plus@1.4.0
   - "@voidzero-dev/*"
   - "@oxc-project/*"
@@ -23,6 +30,8 @@ minimumReleaseAgeExclude:
 overrides:
   vite: "catalog:"
   vite-plus: "catalog:"
+  "@effect/vitest>vitest": "-"
+  "@effect/platform-node-shared": 4.0.5
 
 peerDependencyRules:
   allowAny:
@@ -30,3 +39,12 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: "*"
+
+# Our patch makes @effect/vitest import vite-plus/test instead of vitest.
+packageExtensions:
+  "@effect/vitest@*":
+    dependencies:
+      vite-plus: "catalog:"
+
+patchedDependencies:
+  "@effect/vitest@4.0.5": patches/@effect__vitest@4.0.5.patch
