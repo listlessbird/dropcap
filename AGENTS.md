@@ -29,6 +29,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 
 - Before you push, run `pnpm vp run check:changed`. It formats, lints, typechecks, and runs the tests affected by your changes.
 - While you iterate, run `pnpm vp test run <files>`.
+- CI (`.github/workflows/ci.yml`) runs format, lint, typecheck, every test, and the generated-theme check. `mobile-fingerprint-check.yml` labels a PR `Native Change` when it changes the Android fingerprint, because merging it stops OTA updates reaching users until a new native build ships.
 - **Do not run repo-wide checks** (`pnpm vp run test`, `pnpm vp run typecheck`) unless ril asks. CI owns the full suite.
 - Test meaningful logic and observable behavior. Do not render components to assert props, and do not add tests that mirror the implementation.
 - Logic, data, and state bugs get a failing test first, then the fix. Purely visual bugs get before and after screenshots as proof and no test.

@@ -23,14 +23,29 @@ const GENERATED = [
   "apps/mobile/uniwind-types.d.ts",
 ];
 
+// `vp test run` from the root runs every package's tests as projects. The lint plugin borrows this
+// config from its own directory (`--config ../vite.config.ts`), where it stays one plain project.
+const isRepoRootTestRun = process.cwd() === import.meta.dirname;
+
 export default defineConfig({
   test: {
     environment: "node",
     exclude: ["**/.repos/**", "**/.t3/**", "**/node_modules/**", "**/dist/**"],
     allowOnly: !process.env.CI,
-    // Flaky tests are fixed, not retried.
     retry: 0,
-    projects: ["apps/mobile"],
+    // A loaded machine (parallel agents, native builds) can stall a test for seconds. Flaky tests are
+    // still fixed, never retried.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
+    projects: isRepoRootTestRun
+      ? [
+          "apps/mobile",
+          {
+            extends: true,
+            test: { name: "lint-rules", include: ["oxlint-plugin-kd/**/*.test.ts"] },
+          },
+        ]
+      : undefined,
   },
   staged: {
     "*": "vp fmt --no-error-on-unmatched-pattern",
