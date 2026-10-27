@@ -48,6 +48,12 @@ const variant = VARIANT_CONFIG[APP_VARIANT];
 // `eas init` links the Expo project. Until then OTA updates stay off and builds still work.
 const easProjectId = process.env.KD_EAS_PROJECT_ID;
 
+const dmSans = {
+  regular: "@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf",
+  medium: "@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf",
+  bold: "@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf",
+} as const;
+
 const config: ExpoConfig = {
   name: variant.appName,
   slug: "kindle-drop",
@@ -82,7 +88,25 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-asset",
-    "expo-font",
+    [
+      "expo-font",
+      {
+        // Family names match global.css so classes and native style props share one font.
+        android: {
+          fonts: [
+            {
+              fontFamily: "DMSans-Regular",
+              fontDefinitions: [{ path: dmSans.regular, weight: 400 }],
+            },
+            {
+              fontFamily: "DMSans-Medium",
+              fontDefinitions: [{ path: dmSans.medium, weight: 500 }],
+            },
+            { fontFamily: "DMSans-Bold", fontDefinitions: [{ path: dmSans.bold, weight: 700 }] },
+          ],
+        },
+      },
+    ],
     [
       "expo-splash-screen",
       {

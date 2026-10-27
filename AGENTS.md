@@ -52,6 +52,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 - The React Compiler owns memoization. Do not write `useMemo`, `useCallback`, or `React.memo`.
 - React effects are for synchronizing with something outside React. Derive in render and act in handlers. `kd/react-effect-budget` holds each file to its count in `scripts/effect-budget.json`. A new effect states its reason with `// oxlint-disable-next-line kd/react-effect-budget -- <why>`.
 - `components/ui` exports own their look. Pick a `variant` or `size` rather than restyling one with `className`. Colors come from theme tokens, never literals.
+- The palette lives in `apps/mobile/src/lib/theme.ts` as semantic roles (`--color-card`, `--color-foreground-muted`). After editing it, run `pnpm vp run --filter @kindle-drop/mobile generate` to rewrite the Uniwind theme CSS. Material You fills the same roles from the wallpaper in `src/lib/materialYou.ts`.
 - Default to no comment. Write one only for a constraint, an external quirk, or an invariant the code cannot show, in four lines at most. `kd/no-low-value-comments` enforces the cap.
 - No continuously repainting animations. They peg the GPU on high-refresh displays.
 

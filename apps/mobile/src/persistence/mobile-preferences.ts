@@ -6,6 +6,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
 
+import { THEME_IDS } from "../lib/theme";
 import * as MobileDatabase from "./mobile-database";
 
 // An invalid stored value drops only its own key, so one bad field never resets the rest.
@@ -18,6 +19,7 @@ export type ThemeMode = typeof ThemeMode.Type;
 
 export const Preferences = Schema.Struct({
   themeMode: preference(ThemeMode),
+  themeId: preference(Schema.Literals(THEME_IDS)),
 });
 
 export type Preferences = typeof Preferences.Type;
