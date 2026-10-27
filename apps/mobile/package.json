@@ -1,0 +1,49 @@
+{
+  "name": "@kindle-drop/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "dev:client": "APP_VARIANT=development expo start --dev-client --scheme kindledrop-dev",
+    "dev:client:reset": "APP_VARIANT=development expo start --dev-client --scheme kindledrop-dev --clear",
+    "android:dev": "APP_VARIANT=development EXPO_NO_GIT_STATUS=1 expo prebuild --clean --platform android && expo run:android",
+    "eas:android:dev": "eas build --profile development -p android",
+    "eas:android:preview": "eas build --profile preview -p android",
+    "eas:android:prod": "eas build --profile production -p android",
+    "config:dev": "APP_VARIANT=development expo config",
+    "config:prod": "APP_VARIANT=production expo config",
+    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/export-icons.mts",
+    "test": "vp test run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~58.0.14",
+    "expo": "58.0.14",
+    "expo-asset": "~58.0.16",
+    "expo-build-properties": "~58.0.11",
+    "expo-constants": "~58.0.12",
+    "expo-dev-client": "~58.0.14",
+    "expo-font": "~58.0.8",
+    "expo-linking": "~58.0.13",
+    "expo-splash-screen": "~58.0.10",
+    "expo-system-ui": "~58.0.6",
+    "expo-updates": "~58.0.17",
+    "react": "catalog:",
+    "react-native": "0.88.0",
+    "react-native-gesture-handler": "~3.3.0",
+    "react-native-keyboard-controller": "1.22.7",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
+    "react-native-worklets": "0.13.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@types/babel__core": "^7.20.5",
+    "@types/react": "catalog:",
+    "babel-preset-expo": "~58.0.17",
+    "sharp": "^0.34.5",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

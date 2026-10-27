@@ -10,7 +10,8 @@
     "lint": "vp lint --report-unused-disable-directives",
     "typecheck": "vp run -r --cache typecheck",
     "test": "vp run -r test",
-    "sync:repos": "node scripts/sync-reference-repos.ts"
+    "sync:repos": "node scripts/sync-reference-repos.ts",
+    "mobile:install": "node scripts/mobile-native-client.ts"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

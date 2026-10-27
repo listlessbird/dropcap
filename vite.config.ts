@@ -30,6 +30,7 @@ export default defineConfig({
     allowOnly: !process.env.CI,
     // Flaky tests are fixed, not retried.
     retry: 0,
+    projects: ["apps/mobile"],
   },
   staged: {
     "*": "vp fmt --no-error-on-unmatched-pattern",
