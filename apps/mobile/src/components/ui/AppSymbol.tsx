@@ -9,6 +9,7 @@ import IconChevronDown from "@tabler/icons-react-native/IconChevronDown";
 import IconChevronRight from "@tabler/icons-react-native/IconChevronRight";
 import IconCopy from "@tabler/icons-react-native/IconCopy";
 import IconDeviceMobile from "@tabler/icons-react-native/IconDeviceMobile";
+import IconDeviceTablet from "@tabler/icons-react-native/IconDeviceTablet";
 import IconDotsVertical from "@tabler/icons-react-native/IconDotsVertical";
 import IconInfoCircle from "@tabler/icons-react-native/IconInfoCircle";
 import IconLayoutGrid from "@tabler/icons-react-native/IconLayoutGrid";
@@ -37,6 +38,7 @@ const ICONS = {
   "chevron-right": IconChevronRight,
   copy: IconCopy,
   "device-mobile": IconDeviceMobile,
+  "device-tablet": IconDeviceTablet,
   "dots-vertical": IconDotsVertical,
   "info-circle": IconInfoCircle,
   "layout-grid": IconLayoutGrid,

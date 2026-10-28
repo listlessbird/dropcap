@@ -10,6 +10,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import * as Dialog from "./components/ui/Dialog";
 import { OverlayPortalHost } from "./components/ui/OverlayPortal";
+import { installPairingLinks } from "./features/connect/pairingLinks";
 import {
   AppearanceProvider,
   installAppearanceRuntime,
@@ -19,7 +20,7 @@ import {
   disposeOnFoundationReplace,
   type FoundationHotModule,
 } from "./lib/foundation-fast-refresh";
-import { Navigation, useNavigationTheme } from "./Stack";
+import { Navigation, useConnectionLoaded, useNavigationTheme } from "./Stack";
 import { appAtomRegistry } from "./state/atom-registry";
 
 declare const module: { readonly hot?: FoundationHotModule } | undefined;
@@ -27,14 +28,16 @@ declare const module: { readonly hot?: FoundationHotModule } | undefined;
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // App-lifetime services. Each returns its own teardown, which Fast Refresh runs on replacement.
-const appServiceDisposers = [installAppearanceRuntime()];
+const appServiceDisposers = [installAppearanceRuntime(), installPairingLinks()];
 
 disposeOnFoundationReplace(typeof module === "undefined" ? undefined : module.hot, () => {
   for (const dispose of appServiceDisposers) dispose();
 });
 
 function SplashScreenCoordinator() {
-  const { isReady } = useAppearance();
+  const appearanceReady = useAppearance().isReady;
+  const connectionLoaded = useConnectionLoaded();
+  const isReady = appearanceReady && connectionLoaded;
 
   useEffect(() => {
     if (isReady) void SplashScreen.hide();
@@ -46,8 +49,11 @@ function SplashScreenCoordinator() {
 // Paths come from each screen's `linking` in Stack.tsx. The prefix carries the variant's scheme.
 const linking = { enabled: "auto" as const, prefixes: [Linking.createURL("/")] };
 
+// The Connected and Disconnected groups need the stored connection, so the splash covers its load.
 function AppNavigation() {
-  return <Navigation linking={linking} theme={useNavigationTheme()} />;
+  const theme = useNavigationTheme();
+
+  return useConnectionLoaded() ? <Navigation linking={linking} theme={theme} /> : null;
 }
 
 export default function App() {
