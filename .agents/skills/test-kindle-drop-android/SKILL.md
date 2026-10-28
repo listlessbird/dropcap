@@ -60,4 +60,4 @@ Exercise the affected flow, compare light and dark when the change is visual, an
 
 ## Teardown
 
-Leave the app and Metro running while ril is still iterating. When done, stop only the Metro and emulator PIDs you started, and run `adb reverse --remove tcp:8081`.
+Leave the app and Metro running while the user is still iterating. When done, stop only the Metro and emulator PIDs you started, and run `adb reverse --remove tcp:8081`.

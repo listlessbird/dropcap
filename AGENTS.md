@@ -1,10 +1,10 @@
 # kindle-drop
 
-kindle-drop is an Android app built with Expo and React Native. It is ril's personal reading app, and it starts as a foundation: app variants, Effect state and persistence, theming, a UI kit, and navigation. Product features arrive later.
+kindle-drop is an Android app built with Expo and React Native. It is the user's personal reading app, and it starts as a foundation: app variants, Effect state and persistence, theming, a UI kit, and navigation. Product features arrive later.
 
 The architecture is adapted from [T3 Code](https://github.com/pingdotgg/t3code)'s mobile app. When you need a pattern this repo does not have yet, look at how T3 Code's `apps/mobile` solves it before inventing one, then port only what the feature needs.
 
-## A note from ril
+## A note from the user
 
 I like building complex things as simply as possible. Channel "yagni" and fight scope creep. Do not preserve complexity because it exists, and do not add machinery because it looks impressive. Understand the real constraint, then build the smallest model that makes the correct behavior unsurprising.
 
@@ -13,8 +13,8 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 ## The ways to hurt yourself
 
 1. **Killing by pattern.** Never `pkill -f`, `pgrep | kill`, or kill a PID you found by matching a name or path. Your own agent process has this checkout's path in its argv. Kill only a PID you captured at spawn, or the owner of your port from `ss -H -ltnp` after confirming `/proc/<pid>/cwd` is this checkout.
-2. **Touching the real install.** The production app (`com.listlessbird.kindledrop`) is ril's daily driver. Only install, clear, or uninstall the `.dev` package. Never run `adb shell pm clear` or `adb uninstall` against the production or `.preview` package.
-3. **Publishing.** `eas update`, `eas build`, `eas submit`, and anything else that reaches the Expo or Play servers is outward-facing. OTA updates land on real devices. The same goes for deploying `apps/worker`: the Kindle pulls from it on every wake. Run them only when ril asks, and name the channel or stage before you do.
+2. **Touching the real install.** The production app (`com.listlessbird.kindledrop`) is the user's daily driver. Only install, clear, or uninstall the `.dev` package. Never run `adb shell pm clear` or `adb uninstall` against the production or `.preview` package.
+3. **Publishing.** `eas update`, `eas build`, `eas submit`, and anything else that reaches the Expo or Play servers is outward-facing. OTA updates land on real devices. The same goes for deploying `apps/worker`: the Kindle pulls from it on every wake. Run them only when the user asks, and name the channel or stage before you do.
 
 ## Dev loop
 
@@ -31,7 +31,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 - Before you push, run `pnpm vp run check:changed`. It formats, lints, typechecks, and runs the tests affected by your changes.
 - While you iterate, run `pnpm vp test run <files>`.
 - CI (`.github/workflows/ci.yml`) runs format, lint, typecheck, every test, and the generated-theme check. `mobile-fingerprint-check.yml` labels a PR `Native Change` when it changes the Android fingerprint, because merging it stops OTA updates reaching users until a new native build ships.
-- **Do not run repo-wide checks** (`pnpm vp run test`, `pnpm vp run typecheck`) unless ril asks. CI owns the full suite.
+- **Do not run repo-wide checks** (`pnpm vp run test`, `pnpm vp run typecheck`) unless the user asks. CI owns the full suite.
 - Test meaningful logic and observable behavior. Do not render components to assert props, and do not add tests that mirror the implementation.
 - Logic, data, and state bugs get a failing test first, then the fix. Purely visual bugs get before and after screenshots as proof and no test.
 - `it.effect` runs on a `TestClock`. Advance time with `TestClock.adjust`. No sleeps, polling loops, per-test timeouts, retries, or `Date.now()` deltas. Await the `Deferred` or the event that marks the milestone. Lint enforces this.
@@ -43,7 +43,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 - `apps/mobile`: the Expo app. `src/Stack.tsx` declares every screen and its deep link path. `src/components/ui` is the UI kit, `src/features/<feature>` holds screens and feature logic, `src/state` holds atoms, `src/persistence` holds storage services, and `src/lib` holds small shared modules.
 - The UI kit is Android-only: Compose controls through `@expo/ui` and Tabler icons through `AppSymbol`. Its dev-only catalog (`kindledrop-dev://dev/components`) renders every component with the theme controls on top. Add a new kit component to it.
 - `apps/mobile/modules/kindle-core`: the EPUB to Kindle converter, a Rust crate (`rust/`) exposed as the `KindleCore` turbo module by uniffi-bindgen-react-native. The app reaches it through the `KindleCore` service in `src/lib/kindleCore.ts`.
-- `apps/worker`: the Cloudflare Worker + R2 mailbox between the app and ril's Kindle, an Effect `HttpApi` deployed with Alchemy. `src/Api.ts` is the contract: the app derives its client from it, and the Kindle's `ts.sh` (in `~/projects/kindle`) speaks it with curl, so keep status codes and the text listing stable. `pnpm vp run --filter @kindle-drop/worker dev` serves it locally, and its tests boot the same stack in workerd.
+- `apps/worker`: the Cloudflare Worker + R2 mailbox between the app and the user's Kindle, an Effect `HttpApi` deployed with Alchemy. `src/Api.ts` is the contract: the app derives its client from it, and the Kindle's `ts.sh` (in `~/projects/kindle`) speaks it with curl, so keep status codes and the text listing stable. `pnpm vp run --filter @kindle-drop/worker dev` serves it locally, and its tests boot the same stack in workerd.
 - `oxlint-plugin-kd`: this repo's lint rules, ported from T3 Code.
 - `oxlint-plugin-anti-slop`: vendored [anti-slop](https://github.com/dmmulroy/anti-slop) rules. Update it with the `install-anti-slop` skill; never overwrite it. Provenance is in its `UPSTREAM.md`.
 - `scripts`: repo tooling (`check-changed`, `setup-worktree`, `sync-reference-repos`).
@@ -69,7 +69,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 
 ## Commits and pull requests
 
-- Never open a PR unless ril asks.
+- Never open a PR unless the user asks.
 - Conventional commit titles in plain language: `fix(mobile): settings no longer flashes on open`. Keep the body short.
 - PR body: the problem in a sentence or two, then how you fixed it. Open a real PR, not a draft, rebased onto the latest `main`.
 - UI changes need before and after screenshots. Motion needs a short video.
