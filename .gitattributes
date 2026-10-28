@@ -1,0 +1,2 @@
+# autocrlf=true on Windows converts LF to CRLF, which oxfmt rewrites on every run.
+* text=auto eol=lf

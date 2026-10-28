@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format, lint, typecheck, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Format
+        run: pnpm vp fmt --check
+
+      - name: Lint
+        run: pnpm vp lint --report-unused-disable-directives
+
+      - name: Typecheck
+        run: pnpm vp run -r typecheck
+
+      - name: Test
+        run: pnpm vp run -r test
+
+      - name: Generated theme is current
+        run: pnpm --filter @kindle-drop/mobile generate --check

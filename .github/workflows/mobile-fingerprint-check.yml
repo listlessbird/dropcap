@@ -1,0 +1,90 @@
+name: Mobile Fingerprint Check
+
+# Labels a PR that changes the Android native fingerprint. Merging one leaves main un-OTA-able until
+# a new native build ships, so native changes can be held and merged together right before a build.
+# The check is advisory: it always passes, and the label is the signal.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: mobile-fingerprint-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  fingerprint:
+    name: Native fingerprint diff
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    env:
+      APP_VARIANT: production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Compare the merge commit against its first parent rather than the event's base.
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Fingerprint head
+        run: |
+          pnpm install --frozen-lockfile
+          cd apps/mobile
+          npx expo-updates fingerprint:generate --platform android > "$RUNNER_TEMP/head.json"
+
+      - name: Fingerprint base
+        run: |
+          git checkout --quiet HEAD^1
+          # Reinstall from the base lockfile so a dependency change is not hidden by head's packages.
+          pnpm install --frozen-lockfile
+          cd apps/mobile
+          npx expo-updates fingerprint:generate --platform android > "$RUNNER_TEMP/base.json"
+
+      - id: compare
+        name: Compare fingerprints
+        run: |
+          head_hash="$(jq -r .hash "$RUNNER_TEMP/head.json")"
+          base_hash="$(jq -r .hash "$RUNNER_TEMP/base.json")"
+          {
+            echo "## Native fingerprint diff"
+            echo
+            if [ "$head_hash" = "$base_hash" ]; then
+              echo "- **android**: unchanged (\`$head_hash\`), OTA-compatible"
+            else
+              echo "- **android**: \`$base_hash\` to \`$head_hash\`. Merging needs a new native build before OTAs reach users again."
+              jq -r -n --slurpfile h "$RUNNER_TEMP/head.json" --slurpfile b "$RUNNER_TEMP/base.json" '
+                ($b[0].sources | map({ (.filePath // .id): .hash }) | add // {}) as $bm
+                | $h[0].sources[]
+                | select($bm[(.filePath // .id)] != .hash)
+                | "  - \(.type): `\(.filePath // .id)`"'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "changed=$([ "$head_hash" = "$base_hash" ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+
+      - name: Sync native change label
+        # Fork PRs get a read-only token, so the check stays summary-only there. This workflow must
+        # not move to pull_request_target: it installs and runs PR code.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ steps.compare.outputs.changed }}
+        run: |
+          label="Native Change"
+          gh label create "$label" --color d93f0b --force \
+            --description "Changes the native fingerprint; OTAs stop reaching users until a new build ships."
+          if [ "$CHANGED" = "true" ]; then
+            gh pr edit "$PR" --add-label "$label"
+          else
+            gh pr edit "$PR" --remove-label "$label" || true
+          fi
