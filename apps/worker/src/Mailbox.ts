@@ -4,6 +4,7 @@ import * as Cloudflare from "alchemy/Cloudflare";
 import { retain } from "alchemy/RemovalPolicy";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
+import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -22,6 +23,9 @@ export class Mailbox extends Context.Service<
   {
     readonly upload: (name: ItemName, body: ReadableStream<Uint8Array>) => Run<ItemKey>;
     readonly list: Run<ReadonlyArray<ItemKey>>;
+    /** Records that the Kindle just listed the mailbox. */
+    readonly checkIn: Run<void>;
+    readonly checkedInAt: Run<Option.Option<DateTime.Utc>>;
     readonly download: (key: ItemKey) => Run<Option.Option<Stream.Stream<Uint8Array>>>;
     readonly remove: (key: ItemKey) => Run<void>;
     readonly putReport: (
@@ -53,6 +57,9 @@ export const MailboxR2 = Layer.effect(
 
     const firstPage: Cloudflare.R2.ListOptions = { prefix: "items/" };
 
+    // Outside the lifecycle rules' prefixes, so a Kindle asleep for a month still has a check-in.
+    const checkInKey = "state/checked-in";
+
     // R2 failures are outages, not outcomes a caller can act on, so they surface as 500s.
     return {
       upload: Effect.fn("Mailbox.upload")(function* (name, body) {
@@ -72,6 +79,18 @@ export const MailboxR2 = Layer.effect(
         Effect.map((keys) => keys.toSorted()),
         Effect.orDie,
         Effect.withSpan("Mailbox.list"),
+      ),
+      checkIn: bucket
+        .put(checkInKey, "")
+        .pipe(Effect.asVoid, Effect.orDie, Effect.withSpan("Mailbox.checkIn")),
+      checkedInAt: bucket.head(checkInKey).pipe(
+        Effect.map((object) =>
+          Option.fromNullishOr(object).pipe(
+            Option.map(({ uploaded }) => DateTime.fromDateUnsafe(uploaded)),
+          ),
+        ),
+        Effect.orDie,
+        Effect.withSpan("Mailbox.checkedInAt"),
       ),
       download: Effect.fn("Mailbox.download")(function* (key) {
         const object = yield* bucket.get(key);

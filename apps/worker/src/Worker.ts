@@ -13,7 +13,7 @@ import * as HttpRouter from "effect/http/HttpRouter";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import * as HttpApiError from "effect/http-api/HttpApiError";
-import { AppAuth, ItemId, KindleAuth, MailboxApi, nameOfKey } from "./Api.ts";
+import { AppAuth, EitherAuth, ItemId, KindleAuth, MailboxApi, nameOfKey } from "./Api.ts";
 import { Mailbox, MailboxR2 } from "./Mailbox.ts";
 
 // HttpPlatform.layer needs a FileSystem, which a Worker isolate does not have.
@@ -35,11 +35,14 @@ const encodeItemId = Schema.encodeSync(ItemId);
 
 const sameToken = Redacted.makeEquivalence(Equivalence.String);
 
-const requireBearer = (token: Redacted.Redacted<string>) => ({
+const requireBearer = (...tokens: ReadonlyArray<Redacted.Redacted<string>>) => ({
   bearer: <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     { credential }: { readonly credential: Redacted.Redacted<string> },
-  ) => (sameToken(credential, token) ? effect : Effect.fail(new HttpApiError.Unauthorized({}))),
+  ) =>
+    tokens.some((token) => sameToken(credential, token))
+      ? effect
+      : Effect.fail(new HttpApiError.Unauthorized({})),
 });
 
 const orNotFound = Effect.fromOption(() => new HttpApiError.NotFound({}));
@@ -53,7 +56,8 @@ const webBody = (request: HttpServerRequest.HttpServerRequest) =>
 
 /**
  * The mailbox between the phone app and the Kindle. The app uploads with APP_TOKEN, and the Kindle
- * lists, downloads, and deletes with KINDLE_TOKEN. Each token works only for its own role.
+ * lists and downloads with KINDLE_TOKEN. Each token works only for its own role, except deleting an
+ * item, which either side may do.
  */
 export default Cloudflare.Worker(
   "Mailbox",
@@ -75,6 +79,14 @@ export default Cloudflare.Worker(
             Effect.flatMap((body) => mailbox.upload(params.name, body)),
           ),
         )
+        .handle("status", () =>
+          Effect.all(
+            { checkedInAt: mailbox.checkedInAt, waiting: mailbox.list },
+            {
+              concurrency: "unbounded",
+            },
+          ),
+        )
         .handle("report", ({ params }) =>
           Effect.flatMap(mailbox.getReport(params.name), orNotFound),
         ),
@@ -83,24 +95,31 @@ export default Cloudflare.Worker(
     const kindle = HttpApiBuilder.group(MailboxApi, "kindle", (handlers) =>
       handlers
         .handle("list", () =>
-          Effect.map(mailbox.list, (keys) =>
-            keys.map((key) => `${encodeItemId(key)}\t${nameOfKey(key)}\n`).join(""),
+          mailbox.checkIn.pipe(
+            Effect.andThen(mailbox.list),
+            Effect.map((keys) =>
+              keys.map((key) => `${encodeItemId(key)}\t${nameOfKey(key)}\n`).join(""),
+            ),
           ),
         )
         .handle("download", ({ params }) => Effect.flatMap(mailbox.download(params.id), orNotFound))
-        .handle("remove", ({ params }) => mailbox.remove(params.id))
         .handleRaw("putReport", ({ params, request }) =>
           Effect.flatMap(webBody(request), (body) => mailbox.putReport(params.name, body)),
         ),
     );
 
+    const shared = HttpApiBuilder.group(MailboxApi, "shared", (handlers) =>
+      handlers.handle("remove", ({ params }) => mailbox.remove(params.id)),
+    );
+
     return {
       fetch: yield* HttpRouter.toHttpEffect(
         HttpApiBuilder.layer(MailboxApi).pipe(
-          Layer.provide([health, app, kindle]),
+          Layer.provide([health, app, kindle, shared]),
           Layer.provide([
             Layer.succeed(AppAuth, requireBearer(appToken)),
             Layer.succeed(KindleAuth, requireBearer(kindleToken)),
+            Layer.succeed(EitherAuth, requireBearer(appToken, kindleToken)),
           ]),
           Layer.provide([Etag.layer, HttpPlatformWeb, Path.layer]),
         ),

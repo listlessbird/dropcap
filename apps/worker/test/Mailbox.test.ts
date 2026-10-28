@@ -3,8 +3,10 @@ import * as Cloudflare from "alchemy/Cloudflare";
 import * as Test from "alchemy/Test/Vitest";
 import { expect } from "@effect/vitest";
 import * as Config from "effect/Config";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Base64Url from "effect/encoding/Base64Url";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as HttpBody from "effect/http/HttpBody";
 import * as HttpClient from "effect/http/HttpClient";
@@ -148,5 +150,53 @@ test(
     expect((yield* kindle("GET", `/items/${Base64Url.encode("reports/lab.log")}`)).status).toBe(
       400,
     );
+  }),
+);
+
+test(
+  "the app sees when the Kindle last checked in and which items still wait",
+  Effect.gen(function* () {
+    const app = yield* appClient;
+
+    const key = yield* app.app.upload({
+      params: { name: ItemName.make("status.azw3") },
+      payload: bytes("book"),
+    });
+
+    const before = yield* app.app.status();
+    expect(before.waiting).toContain(key);
+
+    yield* listing;
+
+    const after = yield* app.app.status();
+    expect(Option.isSome(after.checkedInAt)).toBe(true);
+
+    if (Option.isSome(before.checkedInAt) && Option.isSome(after.checkedInAt)) {
+      expect(DateTime.isLessThanOrEqualTo(before.checkedInAt.value, after.checkedInAt.value)).toBe(
+        true,
+      );
+    }
+
+    yield* kindle("DELETE", `/items/${encodeId(key)}`);
+    expect((yield* app.app.status()).waiting).not.toContain(key);
+  }),
+);
+
+test(
+  "the app cancels a waiting item and the Kindle never lists it",
+  Effect.gen(function* () {
+    const app = yield* appClient;
+
+    const key = yield* app.app.upload({
+      params: { name: ItemName.make("cancel.azw3") },
+      payload: bytes("book"),
+    });
+
+    yield* app.shared.remove({ params: { id: key } });
+
+    expect((yield* listing).map(([id]) => id)).not.toContain(encodeId(key));
+    expect(
+      (yield* kindle("DELETE", `/items/${encodeId(key)}`, Config.succeed("wrong"))).status,
+    ).toBe(401);
   }),
 );
