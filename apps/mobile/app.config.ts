@@ -125,6 +125,9 @@ const config: ExpoConfig = {
         },
       },
     ],
+    // Backup rules leave the access key out of Android backups: a restored key cannot be decrypted.
+    "expo-secure-store",
+    ["expo-camera", { recordAudioAndroid: false, microphonePermission: false }],
     "./plugins/withAndroidGradleHeap.cjs",
     "./plugins/withAndroidInputBackground.cjs",
     "./plugins/withAndroidPredictiveBackCompat.cjs",
