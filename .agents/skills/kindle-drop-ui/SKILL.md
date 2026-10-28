@@ -88,7 +88,17 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 | Kindle quiet for days | Kindle hasn't checked in for 3 days. Wake it to receive books. |
 | Disconnect dialog | Title "Disconnect Kindle?", body "Books waiting to send stay on this phone.", actions **Disconnect** and **Cancel** |
 | Cancel sending dialog | Title "Cancel sending?", body "Reaper's Gale won't reach your Kindle.", actions **Cancel sending** and **Keep** |
-| Camera permission | Kindle Drop uses the camera only to scan the pairing code. |
+| Camera permission | Kindle Drop uses the camera only to scan the pairing code. Actions **Allow camera**, or **Open settings** once Android stops asking |
+| Scanner hint | Point the camera at the pairing code |
+| Pairing in progress | Connecting |
+| Pairing offline | Couldn't connect. Check your connection and try again. |
+| Pairing, server error | Couldn't connect. Try again in a few minutes. |
+| Enter details, key rejected | This access key doesn't work. Check it on your computer. |
+| Enter details, server unreachable | Couldn't reach this server. Check the address and try again. |
+| Enter details, address invalid | Enter the full server address, such as https://example.com |
+| Connection not saved | Couldn't save the connection. Try again. |
+| Settings, status check failed | Couldn't check on your Kindle. Check your connection and try again. (offline) or Try again in a few minutes. (server) |
+| Settings, Last check-in | "2 h ago", "Not yet" before the first check-in, "Checking" while loading, "Unknown" when it can't be fetched |
 
 Write new copy in this voice and add it to the catalog.
 
