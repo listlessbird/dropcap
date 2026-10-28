@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { IconButton } from "./components/ui/IconButton";
 import { ComponentCatalogScreen } from "./features/development/ComponentCatalogScreen";
+import { KindleCoreScreen } from "./features/development/KindleCoreScreen";
 import { HomeScreen } from "./features/home/HomeScreen";
 import { useAppearance } from "./features/settings/appearance/AppearanceProvider";
 import { SettingsScreen } from "./features/settings/SettingsScreen";
@@ -50,6 +51,11 @@ const RootStack = createNativeStackNavigator({
       screen: ComponentCatalogScreen,
       linking: "dev/components",
       options: { title: "Components" },
+    },
+    KindleCore: {
+      screen: KindleCoreScreen,
+      linking: "dev/kindle-core",
+      options: { title: "Kindle core" },
     },
   },
 });

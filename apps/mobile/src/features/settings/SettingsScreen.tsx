@@ -62,6 +62,11 @@ export function SettingsScreen() {
               label="Component catalog"
               onPress={() => navigation.navigate("Components")}
             />
+            <ListRow
+              icon="book"
+              label="Kindle core"
+              onPress={() => navigation.navigate("KindleCore")}
+            />
           </ListSection>
         ) : null}
 
