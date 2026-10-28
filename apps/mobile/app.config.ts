@@ -45,8 +45,8 @@ const APP_VARIANT: AppVariant = isAppVariant(process.env.APP_VARIANT)
 
 const variant = VARIANT_CONFIG[APP_VARIANT];
 
-// `eas init` links the Expo project. Until then OTA updates stay off and builds still work.
-const easProjectId = process.env.KD_EAS_PROJECT_ID;
+// @listlessbird/kindle-drop on expo.dev. Not a secret: EAS builds and OTA updates both need it.
+const easProjectId = "07f62b49-4900-46d1-b7cd-1f1e9a6a0e48";
 
 const dmSans = {
   regular: "@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf",
@@ -68,14 +68,11 @@ const config: ExpoConfig = {
   orientation: "portrait",
   icon: variant.icon,
   userInterfaceStyle: "automatic",
-  updates: easProjectId
-    ? {
-        enabled: true,
-        url: `https://u.expo.dev/${easProjectId}`,
-        checkAutomatically: "ON_LOAD",
-        fallbackToCacheTimeout: 0,
-      }
-    : { enabled: false },
+  updates: {
+    url: `https://u.expo.dev/${easProjectId}`,
+    checkAutomatically: "ON_LOAD",
+    fallbackToCacheTimeout: 0,
+  },
   android: {
     package: variant.androidPackage,
     adaptiveIcon: {
@@ -130,14 +127,12 @@ const config: ExpoConfig = {
     "./plugins/withAndroidInputBackground.cjs",
     "./plugins/withAndroidPredictiveBackCompat.cjs",
   ],
-  extra: { appVariant: APP_VARIANT },
+  extra: { appVariant: APP_VARIANT, eas: { projectId: easProjectId } },
   experiments: {
     // Metro only runs babel-plugin-react-compiler when this is set. src/reactCompilerCoverage.test.ts
     // checks every source file compiles.
     reactCompiler: true,
   },
 };
-
-if (easProjectId) config.extra = { ...config.extra, eas: { projectId: easProjectId } };
 
 export default config;
