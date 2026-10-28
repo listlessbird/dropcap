@@ -40,6 +40,9 @@ overrides:
   vite-plus: "catalog:"
   "@effect/vitest>vitest": "-"
   "@effect/platform-node-shared": 4.0.5
+  # alchemy's ranges float these SQL drivers to a release that wants a newer Effect.
+  "@effect/sql-d1": 4.0.5
+  "@effect/sql-sqlite-do": 4.0.5
 
 peerDependencyRules:
   allowAny:
@@ -48,7 +51,7 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
 
-# Our patch makes @effect/vitest import vite-plus/test instead of vitest.
+# Our patches make @effect/vitest and alchemy's test harness import vite-plus/test instead of vitest.
 packageExtensions:
   "@effect/vitest@*":
     dependencies:
@@ -56,3 +59,4 @@ packageExtensions:
 
 patchedDependencies:
   "@effect/vitest@4.0.5": patches/@effect__vitest@4.0.5.patch
+  alchemy@2.0.0-beta.80: patches/alchemy@2.0.0-beta.80.patch

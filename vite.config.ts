@@ -42,6 +42,15 @@ export default defineConfig({
           "apps/mobile",
           {
             extends: true,
+            test: {
+              name: "worker",
+              include: ["apps/worker/**/*.test.ts"],
+              // Throwaway tokens for the local stack the tests boot. Prod reads its own.
+              env: { APP_TOKEN: "test-app-token", KINDLE_TOKEN: "test-kindle-token" },
+            },
+          },
+          {
+            extends: true,
             test: { name: "lint-rules", include: ["oxlint-plugin-kd/**/*.test.ts"] },
           },
         ]

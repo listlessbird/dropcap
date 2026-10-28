@@ -14,7 +14,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 
 1. **Killing by pattern.** Never `pkill -f`, `pgrep | kill`, or kill a PID you found by matching a name or path. Your own agent process has this checkout's path in its argv. Kill only a PID you captured at spawn, or the owner of your port from `ss -H -ltnp` after confirming `/proc/<pid>/cwd` is this checkout.
 2. **Touching the real install.** The production app (`com.listlessbird.kindledrop`) is ril's daily driver. Only install, clear, or uninstall the `.dev` package. Never run `adb shell pm clear` or `adb uninstall` against the production or `.preview` package.
-3. **Publishing.** `eas update`, `eas build`, `eas submit`, and anything else that reaches the Expo or Play servers is outward-facing. OTA updates land on real devices. Run them only when ril asks, and name the channel before you do.
+3. **Publishing.** `eas update`, `eas build`, `eas submit`, and anything else that reaches the Expo or Play servers is outward-facing. OTA updates land on real devices. The same goes for deploying `apps/worker`: the Kindle pulls from it on every wake. Run them only when ril asks, and name the channel or stage before you do.
 
 ## Dev loop
 
@@ -41,6 +41,7 @@ These instructions are good defaults, not hard rules. My direct requests overrid
 
 - `apps/mobile`: the Expo app. `src/Stack.tsx` declares every screen and its deep link path. `src/components/ui` is the UI kit, `src/features/<feature>` holds screens and feature logic, `src/state` holds atoms, `src/persistence` holds storage services, and `src/lib` holds small shared modules.
 - The UI kit is Android-only: Compose controls through `@expo/ui` and Tabler icons through `AppSymbol`. Its dev-only catalog (`kindledrop-dev://dev/components`) renders every component with the theme controls on top. Add a new kit component to it.
+- `apps/worker`: the Cloudflare Worker + R2 mailbox between the app and ril's Kindle, an Effect `HttpApi` deployed with Alchemy. `src/Api.ts` is the contract: the app derives its client from it, and the Kindle's `ts.sh` (in `~/projects/kindle`) speaks it with curl, so keep status codes and the text listing stable. `pnpm vp run --filter @kindle-drop/worker dev` serves it locally, and its tests boot the same stack in workerd.
 - `oxlint-plugin-kd`: this repo's lint rules, ported from T3 Code.
 - `oxlint-plugin-anti-slop`: vendored [anti-slop](https://github.com/dmmulroy/anti-slop) rules. Update it with the `install-anti-slop` skill; never overwrite it. Provenance is in its `UPSTREAM.md`.
 - `scripts`: repo tooling (`check-changed`, `setup-worktree`, `sync-reference-repos`).

@@ -1,0 +1,25 @@
+{
+  "name": "@kindle-drop/worker",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./Api": "./src/Api.ts"
+  },
+  "scripts": {
+    "dev": "alchemy dev",
+    "deploy": "alchemy deploy --stage prod",
+    "test": "vp test run --config ../../vite.config.ts --dir .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "alchemy": "2.0.0-beta.80",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260601.1",
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

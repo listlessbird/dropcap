@@ -1,0 +1,26 @@
+diff --git a/lib/Test/Vitest.js b/lib/Test/Vitest.js
+index bada5420eae35cfcb3c240fc22fcb6e609f3a332..f135b00dcc57b6c7b209cde7802373b1d8e851ff 100644
+--- a/lib/Test/Vitest.js
++++ b/lib/Test/Vitest.js
+@@ -3,7 +3,7 @@ import { it } from "@effect/vitest";
+ import * as Effect from "effect/Effect";
+ import * as Exit from "effect/Exit";
+ import * as Scope from "effect/Scope";
+-import { afterAll as vitestAfterAll, afterEach as vitestAfterEach, beforeAll as vitestBeforeAll, beforeEach as vitestBeforeEach, } from "vitest";
++import { afterAll as vitestAfterAll, afterEach as vitestAfterEach, beforeAll as vitestBeforeAll, beforeEach as vitestBeforeEach, } from "vite-plus/test";
+ import * as Core from "./Core.js";
+ export { executeWhenReady, getWhenReady, guardContentType, guardedFetchLayer, rpcClientLayer, WorkerNotReady, } from "./Http.js";
+ export const defaultStage = Core.defaultStage;
+diff --git a/src/Test/Vitest.ts b/src/Test/Vitest.ts
+index 7dd357668cbc8b76105c74585929c3a837f8b3ef..0bcfc4db066b8e3e45d9b02925dbb7a008908d92 100644
+--- a/src/Test/Vitest.ts
++++ b/src/Test/Vitest.ts
+@@ -8,7 +8,7 @@ import {
+   afterEach as vitestAfterEach,
+   beforeAll as vitestBeforeAll,
+   beforeEach as vitestBeforeEach,
+-} from "vitest";
++} from "vite-plus/test";
+ 
+ import type { AlchemyContext } from "../AlchemyContext.ts";
+ import type { CompiledStack } from "../Stack.ts";
