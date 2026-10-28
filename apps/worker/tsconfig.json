@@ -4,5 +4,5 @@
     "lib": ["ESNext", "DOM"],
     "types": ["node"]
   },
-  "include": ["alchemy.run.ts", "src/**/*.ts", "test/**/*.ts"]
+  "include": ["alchemy.run.ts", "scripts/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
 }
