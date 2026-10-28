@@ -1,0 +1,25 @@
+{
+  "name": "@kindle-drop/kindle-core",
+  "version": "0.0.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/listlessbird/kindle-drop"
+  },
+  "main": "src/index.ts",
+  "dependencies": {
+    "@ubjs/core": "0.31.0-6",
+    "uniffi-bindgen-react-native": "0.31.0-6"
+  },
+  "peerDependencies": {
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "NativeKindleCore",
+    "type": "modules",
+    "jsSrcDir": "src",
+    "android": {
+      "javaPackageName": "com.listlessbird.kindledrop.kindlecore"
+    }
+  }
+}

@@ -11,10 +11,11 @@ config.watchFolders = [...new Set([...(config.watchFolders ?? []), workspaceRoot
 
 config.resolver = {
   ...config.resolver,
-  // Worktree state and reference sources are never app code.
+  // Worktree state, reference sources and Rust build output are never app code.
   blockList: [
     ...[config.resolver?.blockList ?? []].flat(),
     new RegExp(`${escapedWorkspaceRoot}[/\\\\]\\.(t3|repos)[/\\\\].*`),
+    /[/\\]modules[/\\][^/\\]+[/\\]rust[/\\]target[/\\].*/,
   ],
 };
 

@@ -1,0 +1,83 @@
+// Started from ubrn's template; ubrn.config.yaml keeps `ubrn generate` from overwriting it.
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+apply plugin: "com.facebook.react"
+
+def ext(name) {
+  return rootProject.ext.get(name)
+}
+
+// The ABIs the app build asks for, so `-PreactNativeArchitectures=x86_64` compiles Rust for x86_64 only.
+def rustAbis = rootProject.findProperty("reactNativeArchitectures").toString().split(",")*.trim()
+def rustCrate = file("../rust")
+def rustOut = layout.buildDirectory.dir("rust").get().asFile
+
+android {
+  namespace "com.listlessbird.kindledrop.kindlecore"
+  ndkVersion ext("ndkVersion")
+  compileSdkVersion ext("compileSdkVersion")
+
+  defaultConfig {
+    minSdkVersion ext("minSdkVersion")
+    targetSdkVersion ext("targetSdkVersion")
+
+    externalNativeBuild {
+      cmake {
+        arguments "-DANDROID_STL=c++_shared", "-DKINDLE_CORE_RUST_LIB_DIR=${rustOut}"
+        abiFilters(*rustAbis)
+      }
+    }
+  }
+
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+    }
+  }
+
+  buildFeatures {
+    prefab true
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+
+  // AGP does not package CMake's IMPORTED libraries, so the Rust output is also a jniLibs dir.
+  sourceSets {
+    main {
+      jniLibs.srcDirs = [rustOut]
+    }
+  }
+}
+
+dependencies {
+  implementation "com.facebook.react:react-native:+"
+}
+
+react {
+  jsRootDir = file("../src/")
+  libraryName = "KindleCore"
+  codegenJavaPackageName = "com.listlessbird.kindledrop.kindlecore"
+}
+
+// Always the release profile: an unoptimized kindling takes minutes on a large book.
+def buildRust = tasks.register("buildRust", Exec) {
+  inputs.dir(new File(rustCrate, "src"))
+  inputs.files(new File(rustCrate, "Cargo.toml"), new File(rustCrate, "Cargo.lock"))
+  inputs.property("abis", rustAbis)
+  outputs.dir(rustOut)
+
+  workingDir rustCrate
+  environment "ANDROID_NDK_HOME", android.ndkDirectory.absolutePath
+  commandLine(["cargo", "ndk", "--platform", "24", "-o", rustOut.absolutePath] +
+    rustAbis.collectMany { ["-t", it] } + ["build", "--release"])
+}
+
+tasks.matching {
+  it.name.startsWith("configureCMake") || it.name.startsWith("buildCMake") ||
+    it.name ==~ /merge.*JniLibFolders/
+}.configureEach {
+  dependsOn buildRust
+}

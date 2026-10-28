@@ -1,0 +1,25 @@
+[package]
+name = "kindle-core"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "EPUB -> Kindle AZW3 (EBOK) + device thumbnail, for the Expo app via uniffi-bindgen-react-native"
+
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+# Pinned: kindling has frequent breaking releases; check build_mobi_from_extracted's signature on bumps.
+kindling-mobi = "=0.45.6"
+uniffi = "0.31"
+thiserror = "2"
+futures-channel = "0.3"
+
+[dev-dependencies]
+pollster = "0.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+# Not `true`: ubrn reads the UNIFFI_META symbols from the library to generate bindings.
+strip = "debuginfo"

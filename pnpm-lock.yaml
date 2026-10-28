@@ -84,6 +84,9 @@ importers:
       '@expo/ui':
         specifier: 58.0.20
         version: 58.0.20(@babel/core@7.29.7)(expo@58.0.14)(react-native-worklets@0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
+      '@kindle-drop/kindle-core':
+        specifier: workspace:*
+        version: link:modules/kindle-core
       '@react-navigation/elements':
         specifier: 2.9.45
         version: 2.9.45(@react-navigation/native@7.5.1(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native-safe-area-context@5.10.1(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
@@ -199,6 +202,18 @@ importers:
       vite-plus:
         specifier: 1.4.0
         version: 1.4.0(@tsc-rs/typescript@0.8.0)(@types/node@24.12.4)(@vitest/ui@5.0.5(vitest@5.0.5))(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)
+
+  apps/mobile/modules/kindle-core:
+    dependencies:
+      '@ubjs/core':
+        specifier: 0.31.0-6
+        version: 0.31.0-6
+      react-native:
+        specifier: '*'
+        version: 0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0)
+      uniffi-bindgen-react-native:
+        specifier: 0.31.0-6
+        version: 0.31.0-6
 
   apps/worker:
     dependencies:
@@ -2504,6 +2519,9 @@ packages:
   '@types/yargs@17.0.35':
     resolution: {integrity: sha512-qUHkeCyQFxMXg79wQfTtfndEC+N9ZZg76HJftDJp+qH2tV7Gj4OJi7l+PiWwJ+pWtW8GwSmqsDj/oymhrTWXjg==}
 
+  '@ubjs/core@0.31.0-6':
+    resolution: {integrity: sha512-pscv6Zj8mVmd5+ikb1Zr6XZ0yqYwKGeIV8HU8rf9sTvs7GW34OARAp03xFJ7rE9XE4R6LgwQhzYW9knAuz5yxA==}
+
   '@ungap/structured-clone@1.4.0':
     resolution: {integrity: sha512-1mEZtMKPM09vDmQt5y7YvmN2+DFTP7Tg0EWXdic8/C6VRnpb33e4ghisCIE3WZjsE2N8mf+QV1Zqh7ZFYLWInQ==}
 
@@ -4716,6 +4734,10 @@ packages:
   unicode-property-aliases-ecmascript@2.2.0:
     resolution: {integrity: sha512-hpbDzxUY9BFwX+UeBnxv3Sh1q7HFxj48DTmXchNgRa46lO8uj3/1iEn3MiNUYTg1g9ctIqXCCERn8gYZhHC5lQ==}
     engines: {node: '>=4'}
+
+  uniffi-bindgen-react-native@0.31.0-6:
+    resolution: {integrity: sha512-4SfjPl8b9oQQcLJRH7INa+DdWV2FKu9HAVOjHL0+rT8EniTG4qoxOdmDBw8Novq7vSqEFmiXbHaoArLFqWWEhg==}
+    hasBin: true
 
   universal-user-agent@7.0.3:
     resolution: {integrity: sha512-TmnEAEAsBJVZM/AADELsK76llnwcf9vMKuPz8JflO1frO8Lchitr0fNaN9d+Ap0BjKtqWqd/J17qeDnXh8CL2A==}
@@ -7225,6 +7247,8 @@ snapshots:
     dependencies:
       '@types/yargs-parser': 21.0.3
 
+  '@ubjs/core@0.31.0-6': {}
+
   '@ungap/structured-clone@1.4.0': {}
 
   '@vitest/browser-preview@5.0.5(@voidzero-dev/vite-plus-core@1.4.0(@tsc-rs/typescript@0.8.0)(@types/node@24.12.4)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vitest@5.0.5)':
@@ -9473,6 +9497,8 @@ snapshots:
   unicode-match-property-value-ecmascript@2.2.1: {}
 
   unicode-property-aliases-ecmascript@2.2.0: {}
+
+  uniffi-bindgen-react-native@0.31.0-6: {}
 
   universal-user-agent@7.0.3: {}
 

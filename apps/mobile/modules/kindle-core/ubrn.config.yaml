@@ -1,0 +1,30 @@
+# Regenerate the committed bindings after changing the Rust API, from this directory:
+#   cargo build --release --manifest-path rust/Cargo.toml
+#   pnpm exec ubrn generate all --config ubrn.config.yaml rust/target/release/libkindle_core.so
+crate:
+  directory: rust
+  manifestPath: Cargo.toml
+
+bindings:
+  ts: src/generated
+  cpp: cpp/generated
+
+android:
+  directory: android
+  apiLevel: 24
+  useSharedLibrary: true
+
+turboModule:
+  name: KindleCore
+  cpp: cpp
+  entrypoint: src/index.ts
+
+# Android-only module with a hand-written Rust build in build.gradle.
+noOverwrite:
+  - android/build.gradle
+  - android/CMakeLists.txt
+  - android/src/main/AndroidManifest.xml
+  - ios/**
+  - "*.podspec"
+  - rust_modules/**
+  - src/index.web.ts

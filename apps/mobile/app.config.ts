@@ -118,6 +118,8 @@ const config: ExpoConfig = {
       {
         android: {
           minSdkVersion: 24,
+          // modules/kindle-core compiles Rust per ABI. 64-bit only: arm64 phones and the x86_64 emulator.
+          buildArchs: ["arm64-v8a", "x86_64"],
           // SDK 58 lacks Kotlin 2.3's runtime-inert annotation.
           extraProguardRules: "-dontwarn kotlin.MustUseReturnValues",
         },

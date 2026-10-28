@@ -21,6 +21,10 @@ const GENERATED = [
   "apps/mobile/android/**",
   "apps/mobile/ios/**",
   "apps/mobile/uniwind-types.d.ts",
+  // `ubrn generate` output, committed so CI and JS-only work need no Rust toolchain.
+  "apps/mobile/modules/kindle-core/src/**",
+  "apps/mobile/modules/kindle-core/rust/target/**",
+  "apps/mobile/modules/kindle-core/android/build/**",
 ];
 
 // `vp test run` from the root runs every package's tests as projects. The lint plugin borrows this

@@ -1,0 +1,3 @@
+# Build outputs of the local Rust module. Its sources stay in the fingerprint.
+modules/kindle-core/rust/target/**/*
+modules/kindle-core/node_modules/**/*
