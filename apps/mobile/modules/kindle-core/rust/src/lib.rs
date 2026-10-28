@@ -4,7 +4,7 @@
 //! (EXTH 113 + 501, required for lock-screen covers) plus the exact thumbnail file the firmware
 //! looks for, `thumbnail_<asin>_EBOK_portrait.jpg`. Upload the thumbnail before the book; the
 //! Kindle installs it before indexing so the firmware never fetches Amazon's placeholder.
-//! See docs/discoveries.md (Covers) and docs/android-app.md.
+//! See docs/discoveries.md (Covers) and docs/android-app.md in ~/projects/kindle.
 
 use std::path::{Path, PathBuf};
 
