@@ -69,7 +69,17 @@ const isSending = (book: Book) =>
     () => false,
   );
 
-const isRecent = BookStatus.isAnyOf(["OnKindle", "ConvertFailed", "UploadFailed", "Canceled"]);
+const isRecent = (book: Book) =>
+  BookStatus.matchOrElse(
+    book.status,
+    {
+      OnKindle: () => true,
+      ConvertFailed: ({ confirmed }) => confirmed,
+      UploadFailed: () => true,
+      Canceled: () => true,
+    },
+    () => false,
+  );
 
 /** Newest first. Books a share sheet has not sent yet appear in neither. */
 export const librarySections = (books: ReadonlyArray<Book>) => {
@@ -79,7 +89,7 @@ export const librarySections = (books: ReadonlyArray<Book>) => {
 
   return {
     sending: newestFirst.filter(isSending),
-    recent: newestFirst.filter((book) => isRecent(book.status)),
+    recent: newestFirst.filter(isRecent),
   };
 };
 

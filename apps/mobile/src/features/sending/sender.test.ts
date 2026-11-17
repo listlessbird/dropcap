@@ -11,7 +11,7 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 
 import { Connection } from "../../lib/connection";
-import { KindleCore } from "../../lib/kindleCore";
+import { ConvertError, KindleCore } from "../../lib/kindleCore";
 import { MailboxClient, MailboxError } from "../../lib/mailboxClient";
 import { BookFiles } from "../../persistence/book-files";
 import { BookStore } from "../../persistence/book-store";
@@ -28,7 +28,7 @@ const connection = Schema.decodeUnknownSync(Connection)({
   key: "dev-app",
 });
 
-const { Converting, Ready, Uploading, Waiting } = BookStatus.cases;
+const { Converting, ConvertFailed, Ready, Uploading, Waiting } = BookStatus.cases;
 
 const converted: Converted = {
   title: "House of Chains",
@@ -52,8 +52,18 @@ const epub = {
   mimeType: Option.some("application/epub+zip"),
 };
 
+interface Overrides {
+  readonly convertEpub?: KindleCore["Service"]["convertEpub"];
+}
+
+const notAnEpub = new ConvertError({ stage: "Epub", message: "invalid zip archive" });
+
 /** A phone with a stored set of books and a mailbox, both in memory. */
-const world = (books: ReadonlyArray<Book>, mailboxItems: ReadonlyArray<ItemKey> = []) =>
+const world = (
+  books: ReadonlyArray<Book>,
+  mailboxItems: ReadonlyArray<ItemKey> = [],
+  overrides: Overrides = {},
+) =>
   Effect.gen(function* () {
     const rows = yield* Ref.make<ReadonlyMap<string, Book>>(new Map(books.map((b) => [b.id, b])));
     const waiting = yield* Ref.make(mailboxItems);
@@ -94,14 +104,16 @@ const world = (books: ReadonlyArray<Book>, mailboxItems: ReadonlyArray<ItemKey> 
     const kindleCore = Layer.succeed(
       KindleCore,
       KindleCore.of({
-        convertEpub: (_, outDir) =>
-          Effect.succeed({
-            bookPath: `${outDir}/${BOOK}`,
-            thumbnailName: THUMBNAIL,
-            thumbnailPath: `${outDir}/${THUMBNAIL}`,
-            title: "House of Chains",
-            author: "Steven Erikson",
-          }),
+        convertEpub:
+          overrides.convertEpub ??
+          ((_, outDir) =>
+            Effect.succeed({
+              bookPath: `${outDir}/${BOOK}`,
+              thumbnailName: THUMBNAIL,
+              thumbnailPath: `${outDir}/${THUMBNAIL}`,
+              title: "House of Chains",
+              author: "Steven Erikson",
+            })),
       }),
     );
 
@@ -344,6 +356,32 @@ describe("Sender", () => {
       );
 
       assert.strictEqual(error._tag, "UnsupportedFile");
+    }),
+  );
+
+  it.effect("keeps a sent book whose conversion failed when its sheet closes", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], { convertEpub: () => Effect.fail(notAnEpub) });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(epub, true);
+
+        yield* until(id, "ConvertFailed");
+        yield* sender.discard(id);
+
+        assert.isTrue(Option.exists(yield* statusOf(id), BookStatus.guards.ConvertFailed));
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("drops a failed conversion nobody sent once its sheet is gone", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([storedBook("unsent", ConvertFailed.make({ confirmed: false }))]);
+
+      yield* Effect.scoped(Layer.build(phone.layer));
+
+      assert.deepStrictEqual([...(yield* Ref.get(phone.rows)).keys()], []);
     }),
   );
 });

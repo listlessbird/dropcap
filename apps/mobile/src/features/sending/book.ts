@@ -55,7 +55,8 @@ export const BookStatus = Schema.TaggedUnion({
   Uploading: { converted: Converted, uploaded: Schema.Array(ItemKey) },
   Waiting: { converted: Converted, items: Items },
   OnKindle: { converted: Converted, items: Items, arrivedAt: Schema.DateTimeUtcFromMillis },
-  ConvertFailed: {},
+  /** Keeps `confirmed`, so a sheet's Cancel discards only a book the user never sent. */
+  ConvertFailed: { confirmed: Schema.Boolean },
   UploadFailed: {
     converted: Converted,
     uploaded: Schema.Array(ItemKey),
@@ -133,7 +134,11 @@ const next = (status: BookStatus, event: BookEvent): BookStatus => {
         unchanged,
       ),
     ConvertFailed: () =>
-      BookStatus.matchOrElse(status, { Converting: () => ConvertFailed.make({}) }, unchanged),
+      BookStatus.matchOrElse(
+        status,
+        { Converting: ({ confirmed }) => ConvertFailed.make({ confirmed }) },
+        unchanged,
+      ),
     Confirmed: () =>
       BookStatus.matchOrElse(
         status,
@@ -234,7 +239,11 @@ export const claimedItems = (status: BookStatus): ReadonlyArray<ItemKey> =>
 export const isUnconfirmed = (status: BookStatus) =>
   BookStatus.matchOrElse(
     status,
-    { Converting: ({ confirmed }) => !confirmed, Ready: () => true },
+    {
+      Converting: ({ confirmed }) => !confirmed,
+      Ready: () => true,
+      ConvertFailed: ({ confirmed }) => !confirmed,
+    },
     () => false,
   );
 

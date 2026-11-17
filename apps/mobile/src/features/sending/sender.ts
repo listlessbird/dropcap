@@ -402,12 +402,7 @@ export const make = Effect.gen(function* () {
     discard: (id) =>
       logFailure(
         Effect.flatMap(current(id), (book) =>
-          Option.exists(
-            book,
-            ({ status }) => isUnconfirmed(status) || BookStatus.guards.ConvertFailed(status),
-          )
-            ? forget(id)
-            : Effect.void,
+          Option.exists(book, ({ status }) => isUnconfirmed(status)) ? forget(id) : Effect.void,
         ),
       ),
     cancelSending: Effect.fn("Sender.cancelSending")(function* (id) {

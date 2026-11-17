@@ -11,6 +11,7 @@ import {
   BookId,
   BookStatus,
   formatOf,
+  isUnconfirmed,
   leftInMailbox,
   pdfItemName,
   transition,
@@ -102,9 +103,18 @@ describe("transition", () => {
       Uploading.make({ converted, uploaded: [thumbnailKey] }),
     );
     assert.deepStrictEqual(
-      run(ConvertFailed.make({}), BookEvent.Retried()),
+      run(ConvertFailed.make({ confirmed: true }), BookEvent.Retried()),
       Converting.make({ confirmed: true }),
     );
+  });
+
+  it("remembers whether the user sent a book whose conversion failed", () => {
+    const sent = run(Converting.make({ confirmed: true }), BookEvent.ConvertFailed());
+    const unsent = run(Converting.make({ confirmed: false }), BookEvent.ConvertFailed());
+
+    assert.deepStrictEqual(sent, ConvertFailed.make({ confirmed: true }));
+    assert.isFalse(isUnconfirmed(sent));
+    assert.isTrue(isUnconfirmed(unsent));
   });
 
   it("ignores events that do not apply to the current status", () => {
