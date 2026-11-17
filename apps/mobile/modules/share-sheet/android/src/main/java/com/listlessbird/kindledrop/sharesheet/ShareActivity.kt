@@ -22,6 +22,13 @@ class ShareActivity : ReactActivity() {
       override fun getLaunchOptions() = sharedFile(intent)
     }
 
+  // The sheet is excluded from recents, so once the user leaves for Home or another app it could
+  // never be reached again. Leaving cancels it, and the JS side discards the unsent book on unmount.
+  override fun onUserLeaveHint() {
+    super.onUserLeaveHint()
+    finish()
+  }
+
   // `uri`, `mimeType`, `name` and `bytes`, each only when the sender provides it.
   private fun sharedFile(intent: Intent): Bundle {
     val props = Bundle()

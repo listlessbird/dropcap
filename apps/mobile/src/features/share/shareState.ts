@@ -71,6 +71,10 @@ export const shareAtom = Atom.family((shared: SharedFile) =>
         const confirm = preferences.confirmBeforeSending ?? true;
         const id = yield* Sender.use((sender) => sender.add(file, !confirm));
 
+        // However the sheet goes away without Send (Cancel, a swipe, back, or leaving for Home), the
+        // book goes with it. Discarding leaves a book that was sent alone.
+        yield* Effect.addFinalizer(() => Sender.use((sender) => sender.discard(id)));
+
         if (confirm) return ShareOutcome.Confirming({ id });
 
         // A toast outlives the sheet, so it shows over the app that shared.

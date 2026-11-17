@@ -55,7 +55,6 @@ export function createBooksState<E>(runtime: Atom.AtomRuntime<Sender, E>) {
     bookAtom,
     kindleStatusAtom,
     confirmAtom: action("confirm", (sender, id) => sender.confirm(id)),
-    discardAtom: action("discard", (sender, id) => sender.discard(id)),
     retryAtom: action("retry", (sender, id) => sender.retry(id)),
     clearAtom: action("clear", (sender, id) => sender.clear(id)),
     cancelSendingAtom,

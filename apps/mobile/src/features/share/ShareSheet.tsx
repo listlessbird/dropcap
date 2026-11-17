@@ -84,13 +84,13 @@ function MessageSheet(props: {
 function ConfirmSheet(props: { readonly id: BookId }) {
   const book = useAtomValue(booksState.bookAtom(props.id));
   const confirm = useAtomSet(booksState.confirmAtom, { mode: "promise" });
-  const discard = useAtomSet(booksState.discardAtom, { mode: "promise" });
   const decision = useRef<"send" | "cancel">("cancel");
 
-  // Swipe, back and the scrim all mean Cancel. Cancel discards the conversion's output.
-  const { sheet, close } = useClose(() =>
-    decision.current === "send" ? confirm(props.id) : discard(props.id),
-  );
+  // Swipe, back and the scrim all mean Cancel, which closes without confirming. The share atom
+  // discards an unconfirmed book when the sheet unmounts.
+  const { sheet, close } = useClose(async () => {
+    if (decision.current === "send") await confirm(props.id);
+  });
 
   const shown = AsyncResult.value(book).pipe(Option.flatten);
 
