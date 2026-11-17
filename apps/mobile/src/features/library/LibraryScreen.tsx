@@ -25,8 +25,7 @@ import { BookStatus, labelOf, type Book, type BookId } from "../sending/book";
 import { BookCover } from "./BookCover";
 import { chooseFileAtom } from "./chooseFile";
 import {
-  checkInChip,
-  quietNotice,
+  kindleChip,
   statusLine,
   UNSUPPORTED_FILE,
   FILE_UNREADABLE,
@@ -100,26 +99,33 @@ function BookRow(props: {
 
 function KindleChip(props: { readonly now: DateTime.Utc; readonly waiting: boolean }) {
   const status = useAtomValue(booksState.kindleStatusAtom);
-  // A failed refresh keeps showing the last answer the mailbox gave.
-  const checkedInAt = AsyncResult.value(status).pipe(Option.map((value) => value.checkedInAt));
 
-  if (Option.isNone(checkedInAt)) {
-    return AsyncResult.isFailure(status) && !status.waiting ? (
-      <View className="self-start">
-        <Chip label="Couldn't check on your Kindle" />
-      </View>
-    ) : null;
-  }
+  const chip = kindleChip(
+    {
+      last: AsyncResult.value(status),
+      failed: AsyncResult.isFailure(status),
+      waiting: props.waiting,
+    },
+    props.now,
+  );
 
-  const chip = checkInChip(checkedInAt.value, props.now);
-  const quiet = props.waiting ? quietNotice(checkedInAt.value, props.now) : Option.none();
+  if (Option.isNone(chip)) return null;
+
+  const { label, dot, problem, quietNotice } = chip.value;
 
   return (
     <View className="gap-3">
-      <View className="self-start">
-        <Chip label={chip.label} dot={chip.dot} />
+      <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
+        <Chip label={label} dot={dot} />
+        {Option.isSome(problem) ? (
+          <AppText textRole="footnote" className="text-foreground-muted">
+            {problem.value}
+          </AppText>
+        ) : null}
       </View>
-      {Option.isSome(quiet) ? <Notice message={quiet.value} icon="alert-circle" /> : null}
+      {Option.isSome(quietNotice) ? (
+        <Notice message={quietNotice.value} icon="alert-circle" />
+      ) : null}
     </View>
   );
 }

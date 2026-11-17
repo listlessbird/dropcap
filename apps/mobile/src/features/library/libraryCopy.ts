@@ -93,24 +93,62 @@ const checkedInWhen = (at: DateTime.Utc, now: DateTime.Utc) => {
   return /^\d+ [A-Z]/.test(when) ? `on ${when}` : when;
 };
 
-/** The Library's status chip. The dot turns amber once the Kindle has been quiet for a day. */
-export const checkInChip = (checkedInAt: Option.Option<DateTime.Utc>, now: DateTime.Utc) =>
-  Option.match(checkedInAt, {
-    onNone: () => ({ label: "Kindle hasn't checked in yet", dot: "caution" as const }),
-    onSome: (at) => ({
-      label: `Kindle checked in ${checkedInWhen(at, now)}`,
-      dot: Duration.isGreaterThan(DateTime.distance(at, now), QUIET_AFTER)
-        ? ("caution" as const)
-        : ("positive" as const),
-    }),
-  });
+export const CHECK_FAILED = "Couldn't check on your Kindle";
 
-/** Shown under the chip while books wait on a Kindle that has been quiet for days. */
-export const quietNotice = (checkedInAt: Option.Option<DateTime.Utc>, now: DateTime.Utc) =>
-  Option.flatMap(checkedInAt, (at) => {
-    const days = Math.floor(Duration.toDays(DateTime.distance(at, now)));
+/** What the Library knows about the Kindle when it draws the status chip. */
+export interface KindleCheck {
+  /** The last answer the mailbox gave, kept while a newer check fails. */
+  readonly last: Option.Option<{ readonly checkedInAt: Option.Option<DateTime.Utc> }>;
+  /** Whether the latest check failed. */
+  readonly failed: boolean;
+  /** Whether any book is waiting for the Kindle. */
+  readonly waiting: boolean;
+}
 
-    return days < 2
-      ? Option.none()
-      : Option.some(`Kindle hasn't checked in for ${days} days. Wake it to receive books.`);
-  });
+const quietFor = (at: DateTime.Utc, now: DateTime.Utc) => {
+  const days = Math.floor(Duration.toDays(DateTime.distance(at, now)));
+
+  return days < 2
+    ? Option.none()
+    : Option.some(`Kindle hasn't checked in for ${days} days. Wake it to receive books.`);
+};
+
+/**
+ * The Library's status chip. The dot is green after a recent check-in and amber once the Kindle has
+ * been quiet for a day. When the latest check fails, the chip keeps the last answer without a dot,
+ * since it no longer vouches for it, and `problem` says why. Nothing shows while the first check runs.
+ */
+export const kindleChip = (check: KindleCheck, now: DateTime.Utc) =>
+  Option.map(check.last, ({ checkedInAt }) => {
+    const label = Option.match(checkedInAt, {
+      onNone: () => "Kindle hasn't checked in yet",
+      onSome: (at) => `Kindle checked in ${checkedInWhen(at, now)}`,
+    });
+
+    const quiet = Option.match(checkedInAt, {
+      onNone: () => true,
+      onSome: (at) => Duration.isGreaterThan(DateTime.distance(at, now), QUIET_AFTER),
+    });
+
+    return check.failed
+      ? { label, dot: undefined, problem: Option.some(CHECK_FAILED), quietNotice: Option.none() }
+      : {
+          label,
+          dot: quiet ? ("caution" as const) : ("positive" as const),
+          problem: Option.none(),
+          quietNotice: check.waiting
+            ? Option.flatMap(checkedInAt, (at) => quietFor(at, now))
+            : Option.none(),
+        };
+  }).pipe(
+    Option.orElse(() =>
+      check.failed
+        ? Option.some({
+            label: CHECK_FAILED,
+            dot: undefined,
+            problem: Option.none<string>(),
+            quietNotice: Option.none<string>(),
+          })
+        : Option.none(),
+    ),
+  );

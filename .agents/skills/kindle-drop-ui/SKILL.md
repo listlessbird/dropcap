@@ -100,7 +100,7 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 | Settings, status check failed | Couldn't check on your Kindle. Check your connection and try again. (offline) or Try again in a few minutes. (server) |
 | Settings, Last check-in | "2 h ago", "Not yet" before the first check-in, "Checking" while loading, "Unknown" when it can't be fetched |
 | Library chip, no check-in yet | Kindle hasn't checked in yet (amber dot) |
-| Library chip, status unknown | Couldn't check on your Kindle (no dot), shown only when no earlier answer exists |
+| Library chip, check failed | The last answer without its dot, such as "Kindle checked in 2 h ago", followed by "Couldn't check on your Kindle". With no earlier answer the chip itself reads "Couldn't check on your Kindle" |
 | Library row, failed | "Couldn't convert · Tap for details" or "Couldn't upload · Tap for details", in the danger color |
 | Library row, canceled | Sending canceled · 2 h ago |
 | Upload failed, key rejected | This pairing code no longer works. Create a new one on your computer. |
