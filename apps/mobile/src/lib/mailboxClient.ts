@@ -1,4 +1,10 @@
-import { MailboxApi, type ItemKey, type MailboxStatus } from "@kindle-drop/worker/Api";
+import {
+  ItemId,
+  MailboxApi,
+  type ItemKey,
+  type ItemName,
+  type MailboxStatus,
+} from "@kindle-drop/worker/Api";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -21,13 +27,19 @@ export type { ItemKey, MailboxStatus };
  * Why a mailbox request failed, in the terms the UI explains: the key was refused, the server could
  * not be reached, or it answered with something that is not a Kindle Drop mailbox.
  */
+export const MailboxErrorReason = Schema.Literals(["unauthorized", "unreachable", "unexpected"]);
+
+export type MailboxErrorReason = typeof MailboxErrorReason.Type;
+
 export class MailboxError extends Schema.TaggedError<MailboxError>()("MailboxError", {
-  reason: Schema.Literals(["unauthorized", "unreachable", "unexpected"]),
+  reason: MailboxErrorReason,
   cause: Schema.Defect(),
 }) {}
 
 // A phone on a captive or flaky network can hold a request open for minutes.
 const REQUEST_TIMEOUT = Duration.seconds(15);
+
+const decodeItemId = Schema.decodeUnknownEffect(ItemId);
 
 /** The mailbox Worker, through a client derived from apps/worker/src/Api.ts. */
 export class MailboxClient extends Context.Service<
@@ -36,6 +48,16 @@ export class MailboxClient extends Context.Service<
     readonly status: (connection: Connection) => Effect.Effect<MailboxStatus, MailboxError>;
     /** Removes a waiting item so the Kindle never downloads it. */
     readonly cancel: (connection: Connection, id: ItemKey) => Effect.Effect<void, MailboxError>;
+    /**
+     * Streams the file at `uri` into the mailbox as `name` and returns its key. `onProgress` gets
+     * the fraction sent so far. Interrupting aborts the request.
+     */
+    readonly upload: (
+      connection: Connection,
+      name: ItemName,
+      uri: string,
+      onProgress: (fraction: number) => void,
+    ) => Effect.Effect<ItemKey, MailboxError>;
   }
 >()("@kindle-drop/mobile/lib/MailboxClient") {}
 
@@ -83,6 +105,39 @@ export const make = Effect.gen(function* () {
         Effect.flatMap(clientFor(connection), (client) => client.shared.remove({ params: { id } })),
       ),
     ),
+    // React Native's fetch reports no upload progress and would hold the whole book in memory.
+    upload: Effect.fn("MailboxClient.upload")(function* (connection, name, uri, onProgress) {
+      const { File } = yield* Effect.promise(() => import("expo-file-system"));
+
+      const url = HttpApiClient.urlBuilder(MailboxApi, { baseUrl: connection.server }).app.upload({
+        params: { name },
+      });
+
+      const response = yield* Effect.tryPromise({
+        try: (signal) =>
+          new File(uri).upload(url, {
+            httpMethod: "PUT",
+            headers: { Authorization: `Bearer ${Redacted.value(connection.key)}` },
+            mimeType: "application/octet-stream",
+            onProgress: ({ bytesSent, totalBytes }) =>
+              onProgress(totalBytes > 0 ? bytesSent / totalBytes : 0),
+            signal,
+          }),
+        catch: (cause) => new MailboxError({ reason: "unreachable", cause }),
+      });
+
+      if (response.status === 401) {
+        return yield* new MailboxError({ reason: "unauthorized", cause: response.body });
+      }
+
+      if (response.status !== 201) {
+        return yield* new MailboxError({ reason: "unexpected", cause: response.body });
+      }
+
+      return yield* decodeItemId(response.body).pipe(
+        Effect.mapError((cause) => new MailboxError({ reason: "unexpected", cause })),
+      );
+    }),
   });
 });
 

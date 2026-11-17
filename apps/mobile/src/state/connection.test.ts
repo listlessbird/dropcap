@@ -36,6 +36,7 @@ const mountState = (acceptedKey: string) =>
               ? Effect.succeed({ checkedInAt: Option.none<DateTime.Utc>(), waiting: [] })
               : Effect.fail(new MailboxError({ reason: "unauthorized", cause: null })),
           cancel: () => Effect.void,
+          upload: () => Effect.die("Pairing never uploads."),
         }),
       ),
     );
