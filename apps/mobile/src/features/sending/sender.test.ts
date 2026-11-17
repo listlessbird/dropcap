@@ -166,7 +166,25 @@ const world = (
       yield* Ref.set(waiting, []);
     });
 
-    return { layer, rows, waiting, uploads, online, directories, removed, kindleWakes };
+    /** The Kindle wakes and takes only the items `took` keeps, as when a download times out. */
+    const kindleTakes = (took: (key: ItemKey) => boolean) =>
+      Effect.gen(function* () {
+        yield* TestClock.adjust("1 minute");
+        yield* Ref.set(checkedInAt, Option.some(yield* DateTime.now));
+        yield* Ref.update(waiting, (all) => all.filter((key) => !took(key)));
+      });
+
+    return {
+      layer,
+      rows,
+      waiting,
+      uploads,
+      online,
+      directories,
+      removed,
+      kindleWakes,
+      kindleTakes,
+    };
   });
 
 const statusOf = (id: BookId) =>
@@ -396,6 +414,59 @@ describe("Sender", () => {
         const id = yield* sender.add(epub, true);
 
         yield* until(id, "ConvertFailed");
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("lands on On Kindle when Cancel sending comes after the Kindle took the book", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([]);
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(epub, true);
+
+        yield* until(id, "Waiting");
+        yield* phone.kindleWakes;
+        yield* sender.cancelSending(id);
+
+        assert.isTrue(Option.exists(yield* statusOf(id), BookStatus.guards.OnKindle));
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("cancels the book still waiting when the Kindle took only its cover", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([]);
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(epub, true);
+
+        yield* until(id, "Waiting");
+        yield* phone.kindleTakes((key) => nameOfKey(key) === THUMBNAIL);
+        yield* sender.cancelSending(id);
+
+        assert.isTrue(Option.exists(yield* statusOf(id), BookStatus.guards.Canceled));
+        assert.deepStrictEqual(yield* Ref.get(phone.waiting), []);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("lands on On Kindle when the Kindle took the book but not its cover", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([]);
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(epub, true);
+
+        yield* until(id, "Waiting");
+        yield* phone.kindleTakes((key) => nameOfKey(key) === BOOK);
+        yield* sender.cancelSending(id);
+
+        assert.isTrue(Option.exists(yield* statusOf(id), BookStatus.guards.OnKindle));
+        assert.deepStrictEqual(yield* Ref.get(phone.waiting), []);
       }).pipe(Effect.provide(phone.layer));
     }),
   );

@@ -1,4 +1,5 @@
 import { ItemName, type ItemKey, type MailboxStatus } from "@kindle-drop/worker/Api";
+import * as Arr from "effect/Array";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -410,22 +411,43 @@ export const make = Effect.gen(function* () {
         ),
       ),
     cancelSending: Effect.fn("Sender.cancelSending")(function* (id) {
-      const { status } = yield* Effect.fromOption(yield* current(id));
-
-      if (!BookStatus.guards.Waiting(status)) return;
-
       const paired = yield* Effect.fromOption(yield* connection);
 
-      yield* Effect.forEach(status.items, (key) => mailbox.cancel(paired, key), {
-        discard: true,
-      });
+      // The Kindle may have taken the book since the Library last asked, and removing an item that
+      // is already gone still succeeds. So ask first, and cancel only what still waits.
+      const status = yield* mailbox.status(paired);
 
-      const at = yield* DateTime.now;
+      yield* logFailure(deliver(status));
+
+      const { status: book } = yield* Effect.fromOption(yield* current(id));
+
+      if (!BookStatus.guards.Waiting(book)) return;
+
+      const left = book.items.filter((key) => status.waiting.includes(key));
+
+      yield* Effect.forEach(left, (key) => mailbox.cancel(paired, key), { discard: true });
 
       yield* logFailure(
-        apply(id, BookEvent.SendingCanceled({ at })).pipe(
-          Effect.andThen(removeBookFile(id, status)),
-        ),
+        Effect.gen(function* () {
+          // With the book itself gone, only its cover was left: the book is on the Kindle.
+          const after = status.waiting.includes(Arr.lastNonEmpty(book.items))
+            ? Option.none()
+            : yield* apply(
+                id,
+                BookEvent.MailboxChecked({
+                  status: {
+                    ...status,
+                    waiting: status.waiting.filter((key) => !left.includes(key)),
+                  },
+                }),
+              );
+
+          if (!Option.exists(after, (moved) => BookStatus.guards.OnKindle(moved.status))) {
+            yield* apply(id, BookEvent.SendingCanceled({ at: yield* DateTime.now }));
+          }
+
+          yield* removeBookFile(id, book);
+        }),
       );
     }),
     retry: (id) => logFailure(apply(id, BookEvent.Retried()).pipe(Effect.andThen(drive(id)))),
