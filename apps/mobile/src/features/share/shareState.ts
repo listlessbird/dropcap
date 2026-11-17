@@ -69,11 +69,14 @@ export const shareAtom = Atom.family((shared: SharedFile) =>
         );
 
         const confirm = preferences.confirmBeforeSending ?? true;
-        const id = yield* Sender.use((sender) => sender.add(file, !confirm));
 
         // However the sheet goes away without Send (Cancel, a swipe, back, or leaving for Home), the
-        // book goes with it. Discarding leaves a book that was sent alone.
-        yield* Effect.addFinalizer(() => Sender.use((sender) => sender.discard(id)));
+        // book goes with it, even mid-copy: adding is uninterruptible, so its discard is always
+        // registered. Discarding leaves a book that was sent alone.
+        const id = yield* Effect.acquireRelease(
+          Sender.use((sender) => sender.add(file, !confirm)),
+          (added) => Sender.use((sender) => sender.discard(added)),
+        );
 
         if (confirm) return ShareOutcome.Confirming({ id });
 

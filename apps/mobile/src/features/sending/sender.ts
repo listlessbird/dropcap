@@ -428,9 +428,10 @@ export const make = Effect.gen(function* () {
       const pdfName = pdfItemName(file.name);
       const storedAs = format === "epub" ? SOURCE_EPUB : pdfName;
 
+      // Also on interruption, as when the user leaves a share sheet while a large file copies.
       const bytes = yield* files
         .copyIn(id, file.uri, storedAs)
-        .pipe(Effect.tapError(() => files.removeAll(id)));
+        .pipe(Effect.onError(() => files.removeAll(id)));
 
       const source = { name: file.name, format, bytes };
 

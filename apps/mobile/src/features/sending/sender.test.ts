@@ -4,6 +4,7 @@ import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
@@ -59,6 +60,11 @@ interface Overrides {
   readonly filesMissing?: boolean;
   /** Stored rows this version of the app cannot read. */
   readonly unreadable?: ReadonlyArray<string>;
+  /** Holds every copy into the app after it started, as a large file does. */
+  readonly holdCopy?: {
+    readonly started: Deferred.Deferred<void>;
+    readonly release: Deferred.Deferred<void>;
+  };
   /** Holds the first upload after the mailbox stored it, before the app hears back. */
   readonly holdFirstUpload?: {
     readonly stored: Deferred.Deferred<void>;
@@ -105,10 +111,16 @@ const world = (
       BookFiles,
       BookFiles.of({
         copyIn: (id) =>
-          Effect.as(
-            Ref.update(directories, (all) => [...all, id]),
-            9_100_000,
-          ),
+          Effect.gen(function* () {
+            yield* Ref.update(directories, (all) => [...all, id]);
+
+            if (overrides.holdCopy) {
+              yield* Deferred.succeed(overrides.holdCopy.started, undefined);
+              yield* Deferred.await(overrides.holdCopy.release);
+            }
+
+            return 9_100_000;
+          }),
         size: () => Effect.succeed(2_400_000),
         exists: () => Effect.succeed(!overrides.filesMissing),
         path: (id, name) => (name === undefined ? `/books/${id}` : `/books/${id}/${name}`),
@@ -600,6 +612,25 @@ describe("Sender", () => {
       yield* Effect.scoped(Layer.build(phone.layer));
 
       assert.deepStrictEqual(yield* Ref.get(phone.directories), ["from-a-newer-version"]);
+    }),
+  );
+
+  it.effect("leaves nothing behind when a share is abandoned mid-copy", () =>
+    Effect.gen(function* () {
+      const started = yield* Deferred.make<void>();
+      const release = yield* Deferred.make<void>();
+      const phone = yield* world([], [], { holdCopy: { started, release } });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const adding = yield* Effect.forkChild(sender.add(epub, false));
+
+        yield* Deferred.await(started);
+        yield* Fiber.interrupt(adding);
+
+        assert.deepStrictEqual(yield* Ref.get(phone.directories), []);
+        assert.strictEqual((yield* Ref.get(phone.rows)).size, 0);
+      }).pipe(Effect.provide(phone.layer));
     }),
   );
 });
