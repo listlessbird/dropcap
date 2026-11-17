@@ -48,9 +48,12 @@ export function createBooksState<E>(runtime: Atom.AtomRuntime<Sender, E>) {
       .fn((id: BookId) => Sender.use((sender) => run(sender, id)), { concurrent: true })
       .pipe(Atom.keepAlive, Atom.withLabel(`books:${label}`));
 
-  const cancelSendingAtom = runtime
-    .fn((id: BookId) => Sender.use((sender) => sender.cancelSending(id)))
-    .pipe(Atom.keepAlive, Atom.withLabel("books:cancel-sending"));
+  // One per book, so one book's failed cancel never shows on another book's screen.
+  const cancelSendingAtom = Atom.family((id: BookId) =>
+    runtime
+      .fn((_: void) => Sender.use((sender) => sender.cancelSending(id)))
+      .pipe(Atom.keepAlive, Atom.withLabel(`books:cancel-sending:${id}`)),
+  );
 
   return {
     booksAtom,

@@ -81,7 +81,7 @@ export function BookScreen({ route }: StaticScreenProps<{ readonly id: string }>
   const refreshStatus = useAtomRefresh(booksState.kindleStatusAtom);
   const refreshNow = useAtomRefresh(nowAtom);
   const retry = useAtomSet(booksState.retryAtom);
-  const [canceled, cancelSending] = useAtom(booksState.cancelSendingAtom);
+  const [canceled, cancelSending] = useAtom(booksState.cancelSendingAtom(id));
 
   // Mounting the status atom is what asks the mailbox, so the timeline moves on while it is open.
   useAtomValue(booksState.kindleStatusAtom);
@@ -178,7 +178,7 @@ export function BookScreen({ route }: StaticScreenProps<{ readonly id: string }>
                   confirmText: "Cancel sending",
                   cancelText: "Keep",
                   destructive: true,
-                  onConfirm: () => cancelSending(id),
+                  onConfirm: () => cancelSending(),
                 })
               }
             />
