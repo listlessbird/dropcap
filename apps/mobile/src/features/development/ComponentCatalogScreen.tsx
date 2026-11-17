@@ -3,6 +3,7 @@ import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "../../components/ui/AppText";
+import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Button } from "../../components/ui/Button";
 import { Chip } from "../../components/ui/Chip";
 import * as Dialog from "../../components/ui/Dialog";
@@ -41,6 +42,7 @@ export function ComponentCatalogScreen() {
   const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]>("Recent");
   const [selectedChip, setSelectedChip] = useState("Fiction");
   const [noticeVisible, setNoticeVisible] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <ScrollView
@@ -126,6 +128,30 @@ export function ComponentCatalogScreen() {
               onPress={() => setSelectedChip(label)}
             />
           ))}
+          <Chip label="Kindle checked in 2 h ago" dot="positive" />
+          <Chip label="Kindle checked in 3 days ago" dot="caution" />
+        </View>
+
+        <View className="gap-3">
+          <AppText textRole="headline" className="text-foreground">
+            Sheet
+          </AppText>
+          <Button label="Open bottom sheet" onPress={() => setSheetOpen(true)} />
+          {sheetOpen ? (
+            <BottomSheet onDismiss={() => setSheetOpen(false)}>
+              <View className="gap-4 px-5 pb-4 pt-1">
+                <AppText textRole="headline" className="font-sans-medium">
+                  House of Chains
+                </AppText>
+                <Button
+                  tone="contrast"
+                  fullWidth
+                  label="Send to Kindle"
+                  onPress={() => setSheetOpen(false)}
+                />
+              </View>
+            </BottomSheet>
+          ) : null}
         </View>
 
         <View className="gap-3">

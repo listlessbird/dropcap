@@ -8,6 +8,8 @@ export function Chip(props: {
   readonly label: string;
   readonly selected?: boolean;
   readonly icon?: AppSymbolName;
+  /** A status dot before the label. */
+  readonly dot?: "positive" | "caution";
   readonly trailingIcon?: AppSymbolName;
   readonly size?: "small" | "default";
   readonly onPress?: () => void;
@@ -25,6 +27,14 @@ export function Chip(props: {
 
   const content = (
     <>
+      {props.dot ? (
+        <View
+          className={cn(
+            "size-1.75 rounded-full",
+            props.dot === "positive" ? "bg-positive" : "bg-warning-foreground",
+          )}
+        />
+      ) : null}
       {props.icon ? (
         <SymbolView name={props.icon} size={15} tintColorClassName={iconColor} />
       ) : null}
@@ -33,7 +43,8 @@ export function Chip(props: {
         numberOfLines={small ? undefined : 1}
         className={cn(
           "shrink",
-          !small && "max-w-[180px]",
+          // A status reads in full. Filter chips stay short.
+          !small && !props.dot && "max-w-[180px]",
           !small && "font-sans-medium",
           props.selected ? "text-primary-foreground" : "text-foreground-muted",
         )}

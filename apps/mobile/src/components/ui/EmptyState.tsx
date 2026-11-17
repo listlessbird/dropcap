@@ -2,11 +2,14 @@ import { View } from "react-native";
 import type { ReactNode } from "react";
 
 import { AppText as Text } from "./AppText";
+import { SymbolView, type AppSymbolName } from "./AppSymbol";
 import { Button } from "./Button";
 
 export function EmptyState(props: {
   readonly title: string;
   readonly detail: string;
+  /** Plain variant only: an icon above the title. */
+  readonly icon?: AppSymbolName;
   readonly actionLabel?: string;
   readonly onAction?: () => void;
   readonly action?: ReactNode;
@@ -15,6 +18,11 @@ export function EmptyState(props: {
   if (props.variant === "plain") {
     return (
       <View className="items-center px-8 py-8">
+        {props.icon ? (
+          <View className="mb-3">
+            <SymbolView name={props.icon} size={44} tintColorClassName="accent-icon-subtle" />
+          </View>
+        ) : null}
         <Text textRole="title" className="text-center font-sans-bold text-foreground">
           {props.title}
         </Text>
