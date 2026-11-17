@@ -83,9 +83,6 @@ export function BookScreen({ route }: StaticScreenProps<{ readonly id: string }>
   const retry = useAtomSet(booksState.retryAtom);
   const [canceled, cancelSending] = useAtom(booksState.cancelSendingAtom(id));
 
-  // Mounting the status atom is what asks the mailbox, so the timeline moves on while it is open.
-  useAtomValue(booksState.kindleStatusAtom);
-
   useFocusEffect(() => {
     refreshNow();
     refreshStatus();

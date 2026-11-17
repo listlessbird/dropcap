@@ -31,7 +31,7 @@ export const timelineOf = (
     detail,
   });
 
-  const [first, uploaded, waiting, onKindle] = BookStatus.match<ReadonlyArray<Step>>(book.status, {
+  const steps = BookStatus.match<ReadonlyArray<Step>>(book.status, {
     Converting: () => [
       step("Converted", "now", "Converting"),
       step("Uploaded", "next"),
@@ -86,8 +86,6 @@ export const timelineOf = (
     ],
     Clearing: () => [],
   });
-
-  const steps = [first, uploaded, waiting, onKindle].flatMap((s) => (s ? [s] : []));
 
   return book.source.format === "pdf" ? steps.slice(1) : steps;
 };
