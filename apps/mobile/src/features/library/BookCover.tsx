@@ -13,17 +13,21 @@ const SIZE = {
   detail: { className: "h-36 w-24 rounded-lg", icon: 32 },
 } as const;
 
-/** The Kindle thumbnail the converter made, or a plain book before conversion and for PDFs. */
-export function BookCover(props: { readonly book: Book; readonly size: keyof typeof SIZE }) {
+/**
+ * The Kindle thumbnail the converter made, or a plain book before conversion, for PDFs, and while a
+ * shared file is still being copied in and has no book yet.
+ */
+export function BookCover(props: { readonly book?: Book; readonly size: keyof typeof SIZE }) {
   const { className, icon } = SIZE[props.size];
+  const { book } = props;
 
   const thumbnail = Option.flatMap(
-    convertedOf(props.book.status),
+    Option.flatMap(Option.fromNullishOr(book), ({ status }) => convertedOf(status)),
     (converted) => converted.thumbnail,
   );
 
-  if (Option.isSome(thumbnail)) {
-    const uri = new File(Paths.document, BOOKS_DIRECTORY, props.book.id, thumbnail.value).uri;
+  if (book && Option.isSome(thumbnail)) {
+    const uri = new File(Paths.document, BOOKS_DIRECTORY, book.id, thumbnail.value).uri;
 
     return (
       <Image
