@@ -123,6 +123,10 @@ export default Cloudflare.Worker(
           ]),
           Layer.provide([Etag.layer, HttpPlatformWeb, Path.layer]),
         ),
+      ).pipe(
+        // The router's default 100-character cap 404s a percent-encoded title of 120 characters,
+        // and the base64url id of its key.
+        Effect.provideService(HttpRouter.RouterConfig, { maxParamLength: 2048 }),
       ),
     };
   }).pipe(Effect.provide(MailboxR2)),

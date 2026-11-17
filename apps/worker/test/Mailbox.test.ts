@@ -103,6 +103,21 @@ test(
 );
 
 test(
+  "the Kindle downloads and removes an item whose name fills the converter's 120 characters",
+  Effect.gen(function* () {
+    const app = yield* appClient;
+    const name = `${"Memories of Ice_ Book 3 of the Malazan Book of the Fallen ".repeat(2).slice(0, 115)}.azw3`;
+
+    const id = encodeId(
+      yield* app.app.upload({ params: { name: ItemName.make(name) }, payload: bytes("long") }),
+    );
+
+    expect(yield* (yield* kindle("GET", `/items/${id}`)).text).toBe("long");
+    expect((yield* kindle("DELETE", `/items/${id}`)).status).toBe(204);
+  }),
+);
+
+test(
   "each token only opens its own side of the mailbox",
   Effect.gen(function* () {
     const { url } = yield* stack;
