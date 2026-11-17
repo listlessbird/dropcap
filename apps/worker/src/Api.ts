@@ -30,6 +30,9 @@ export const itemKey = (uploadedAtMillis: number, name: ItemName) =>
 
 export const nameOfKey = (key: ItemKey) => key.slice(key.lastIndexOf("/") + 1);
 
+/** The Worker's clock when it stored the item, in epoch milliseconds. */
+export const uploadedAtOfKey = (key: ItemKey) => Number(key.split("/")[1]);
+
 const Text = Schema.String.pipe(HttpApiSchema.asText());
 
 export class AppAuth extends HttpApiMiddleware.Service<AppAuth>()("AppAuth", {
