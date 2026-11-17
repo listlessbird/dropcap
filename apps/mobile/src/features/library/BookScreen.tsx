@@ -15,7 +15,7 @@ import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { cn } from "../../lib/cn";
 import { booksState } from "../../state/books";
 import { nowAtom } from "../../state/clock";
-import { BookId, BookStatus, labelOf } from "../sending/book";
+import { BookId, BookStatus, canRetry, labelOf } from "../sending/book";
 import { BookCover } from "./BookCover";
 import { CANCEL_FAILED, failureOf } from "./libraryCopy";
 import { timelineOf, type Step, type StepState } from "./timeline";
@@ -157,7 +157,9 @@ export function BookScreen({ route }: StaticScreenProps<{ readonly id: string }>
         {Option.isSome(failure) ? (
           <View className="gap-3">
             <ErrorBanner message={failure.value} />
-            <Button tone="contrast" fullWidth label="Try again" onPress={() => retry(id)} />
+            {canRetry(shown.status) ? (
+              <Button tone="contrast" fullWidth label="Try again" onPress={() => retry(id)} />
+            ) : null}
           </View>
         ) : null}
 

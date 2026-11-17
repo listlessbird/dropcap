@@ -44,6 +44,9 @@ export type Converted = typeof Converted.Type;
 
 const Items = Schema.NonEmptyArray(ItemKey);
 
+/** Why an upload stopped: the mailbox's reasons, or the book file is gone from this phone. */
+export const UploadFailure = Schema.Literals([...MailboxErrorReason.literals, "missing"]);
+
 /**
  * Where a book is between the share and the Kindle. `uploaded` and `items` are mailbox keys in
  * upload order, which is also the order the Kindle installs them.
@@ -60,7 +63,7 @@ export const BookStatus = Schema.TaggedUnion({
   UploadFailed: {
     converted: Converted,
     uploaded: Schema.Array(ItemKey),
-    reason: MailboxErrorReason,
+    reason: UploadFailure,
   },
   Canceled: { converted: Converted, at: Schema.DateTimeUtcFromMillis },
   /** Cleared from Recent, with items a failed upload left in the mailbox still to remove. */
@@ -68,6 +71,8 @@ export const BookStatus = Schema.TaggedUnion({
 });
 
 export type BookStatus = typeof BookStatus.Type;
+
+export type UploadFailure = typeof UploadFailure.Type;
 
 export const Book = Schema.Struct({
   id: BookId,
@@ -83,7 +88,7 @@ export type BookEvent = Data.TaggedEnum<{
   ConvertFailed: {};
   Confirmed: {};
   ItemUploaded: { readonly key: ItemKey };
-  UploadFailed: { readonly reason: MailboxErrorReason };
+  UploadFailed: { readonly reason: UploadFailure };
   MailboxChecked: { readonly status: MailboxStatus };
   SendingCanceled: { readonly at: DateTime.Utc };
   Retried: {};
@@ -198,7 +203,8 @@ const next = (status: BookStatus, event: BookEvent): BookStatus => {
         status,
         {
           ConvertFailed: () => Converting.make({ confirmed: true }),
-          UploadFailed: ({ converted, uploaded }) => uploading(converted, uploaded),
+          UploadFailed: ({ converted, uploaded, reason }) =>
+            reason === "missing" ? status : uploading(converted, uploaded),
         },
         unchanged,
       ),
@@ -263,6 +269,14 @@ export const isUnconfirmed = (status: BookStatus) =>
       Ready: () => true,
       ConvertFailed: ({ confirmed }) => !confirmed,
     },
+    () => false,
+  );
+
+/** Failures that Try again can fix. A book whose file is gone has to be shared again. */
+export const canRetry = (status: BookStatus) =>
+  BookStatus.matchOrElse(
+    status,
+    { ConvertFailed: () => true, UploadFailed: ({ reason }) => reason !== "missing" },
     () => false,
   );
 

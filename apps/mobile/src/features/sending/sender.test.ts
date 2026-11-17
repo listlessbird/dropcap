@@ -55,6 +55,10 @@ const epub = {
 
 interface Overrides {
   readonly convertEpub?: KindleCore["Service"]["convertEpub"];
+  /** Whether the book files on this phone are gone, as after the user cleared app storage. */
+  readonly filesMissing?: boolean;
+  /** Stored rows this version of the app cannot read. */
+  readonly unreadable?: ReadonlyArray<string>;
   /** Holds the first upload after the mailbox stored it, before the app hears back. */
   readonly holdFirstUpload?: {
     readonly stored: Deferred.Deferred<void>;
@@ -76,14 +80,22 @@ const world = (
     const uploads = yield* Ref.make<ReadonlyArray<string>>([]);
     const online = yield* Ref.make(true);
     const checkedInAt = yield* Ref.make(Option.none<DateTime.Utc>());
-    const directories = yield* Ref.make<ReadonlyArray<string>>(books.map((book) => book.id));
     const removed = yield* Ref.make<ReadonlyArray<string>>([]);
+
+    const directories = yield* Ref.make<ReadonlyArray<string>>([
+      ...books.map((book) => book.id),
+      ...(overrides.unreadable ?? []),
+    ]);
+
     const uploadCalls = yield* Ref.make(0);
 
     const store = Layer.succeed(
       BookStore,
       BookStore.of({
-        list: Effect.map(Ref.get(rows), (all) => [...all.values()]),
+        list: Effect.map(Ref.get(rows), (all) => ({
+          books: [...all.values()],
+          unreadable: overrides.unreadable ?? [],
+        })),
         save: (book) => Ref.update(rows, (all) => new Map(all).set(book.id, book)),
         remove: (id) => Ref.update(rows, (all) => new Map([...all].filter(([key]) => key !== id))),
       }),
@@ -98,6 +110,7 @@ const world = (
             9_100_000,
           ),
         size: () => Effect.succeed(2_400_000),
+        exists: () => Effect.succeed(!overrides.filesMissing),
         path: (id, name) => (name === undefined ? `/books/${id}` : `/books/${id}/${name}`),
         uri: (id, name) => `file:///books/${id}/${name}`,
         remove: (id, names) =>
@@ -552,6 +565,41 @@ describe("Sender", () => {
         assert.deepStrictEqual(yield* Ref.get(phone.waiting), []);
         assert.isFalse((yield* Ref.get(phone.rows)).has("b1"));
       }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("stops a send whose book file is gone instead of retrying it", () =>
+    Effect.gen(function* () {
+      const phone = yield* world(
+        [storedBook("b1", Uploading.make({ converted, uploaded: [] }))],
+        [],
+        { filesMissing: true },
+      );
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+
+        yield* until(BookId.make("b1"), "UploadFailed");
+        yield* sender.refresh;
+
+        assert.deepStrictEqual(
+          Option.map(yield* statusOf(BookId.make("b1")), (status) =>
+            BookStatus.guards.UploadFailed(status) ? status.reason : status._tag,
+          ),
+          Option.some("missing"),
+        );
+        assert.deepStrictEqual(yield* Ref.get(phone.uploads), []);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("keeps the files of a stored book this version cannot read", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], { unreadable: ["from-a-newer-version"] });
+
+      yield* Effect.scoped(Layer.build(phone.layer));
+
+      assert.deepStrictEqual(yield* Ref.get(phone.directories), ["from-a-newer-version"]);
     }),
   );
 });

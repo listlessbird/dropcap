@@ -62,8 +62,11 @@ export class MobileDatabase extends Context.Service<
       payload: string,
       updatedAt: number,
     ) => Effect.Effect<void, MobileDatabaseError>;
-    /** Every book's payload, oldest first. */
-    readonly loadBooksJson: Effect.Effect<ReadonlyArray<string>, MobileDatabaseError>;
+    /** Every book's row, oldest first. */
+    readonly loadBooksJson: Effect.Effect<
+      ReadonlyArray<{ readonly id: string; readonly payload: string }>,
+      MobileDatabaseError
+    >;
     readonly saveBookJson: (
       id: string,
       addedAt: number,
@@ -128,11 +131,11 @@ export const make = Effect.gen(function* () {
     ),
     loadBooksJson: Effect.tryPromise({
       try: () =>
-        database.getAllAsync<{ readonly payload: string }>(
-          "SELECT payload FROM books ORDER BY added_at",
+        database.getAllAsync<{ readonly id: string; readonly payload: string }>(
+          "SELECT id, payload FROM books ORDER BY added_at",
         ),
       catch: databaseError("load-books"),
-    }).pipe(Effect.map((rows) => rows.map((row) => row.payload))),
+    }),
     saveBookJson: Effect.fn("MobileDatabase.saveBookJson")((id, addedAt, payload) =>
       Effect.tryPromise({
         try: () =>

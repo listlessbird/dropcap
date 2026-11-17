@@ -30,6 +30,7 @@ export class BookFiles extends Context.Service<
       name: string,
     ) => Effect.Effect<number, BookFilesError>;
     readonly size: (id: BookId, name: string) => Effect.Effect<number, BookFilesError>;
+    readonly exists: (id: BookId, name: string) => Effect.Effect<boolean>;
     /** A file system path, as the Rust converter takes it. Without a name, the book's directory. */
     readonly path: (id: BookId, name?: string) => string;
     /** A `file://` URI, as images and uploads take it. */
@@ -75,6 +76,7 @@ export const make = Effect.gen(function* () {
         catch: (cause) => new BookFilesError({ cause }),
       }),
     ),
+    exists: (id, name) => Effect.sync(() => file(id, name).exists),
     path: (id, name) => toPath(name === undefined ? directory(id).uri : file(id, name).uri),
     uri: (id, name) => file(id, name).uri,
     remove: (id, names) =>

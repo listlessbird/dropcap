@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect";
 import * as FiberMap from "effect/FiberMap";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Predicate from "effect/Predicate";
 import * as Random from "effect/Random";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
@@ -44,6 +45,8 @@ export interface IncomingFile {
   readonly name: string;
   readonly mimeType: Option.Option<string>;
 }
+
+class FileMissing extends Schema.TaggedError<FileMissing>()("FileMissing", {}) {}
 
 export class UnsupportedFile extends Schema.TaggedError<UnsupportedFile>()("UnsupportedFile", {}) {}
 
@@ -237,7 +240,14 @@ export const make = Effect.gen(function* () {
         ),
       );
 
-      return yield* Option.match(leftInMailbox(name, uploaded, waiting, claimed), {
+      const left = leftInMailbox(name, uploaded, waiting, claimed);
+
+      // A missing file is no network failure: retrying cannot help, so it is never retried.
+      if (Option.isNone(left) && !(yield* files.exists(id, name))) {
+        return yield* new FileMissing();
+      }
+
+      return yield* Option.match(left, {
         onSome: Effect.succeed,
         onNone: () =>
           mailbox.upload(paired.value, name, files.uri(id, name), (fraction) => {
@@ -246,7 +256,16 @@ export const make = Effect.gen(function* () {
       });
     }).pipe(
       Effect.matchEffect({
-        onFailure: ({ reason }) => Effect.as(apply(id, BookEvent.UploadFailed({ reason })), false),
+        onFailure: (error) =>
+          Effect.as(
+            apply(
+              id,
+              BookEvent.UploadFailed({
+                reason: Predicate.isTagged(error, "FileMissing") ? "missing" : error.reason,
+              }),
+            ),
+            false,
+          ),
         onSuccess: (key) => Effect.as(apply(id, BookEvent.ItemUploaded({ key })), true),
       }),
       uploads.withPermit,
@@ -367,7 +386,7 @@ export const make = Effect.gen(function* () {
   // A previous process may have died mid-send. Unconfirmed books lost their sheet with it, and a
   // directory without a record is a discarded share whose conversion finished afterwards.
   const recover = Effect.gen(function* () {
-    const stored = yield* store.list;
+    const { books: stored, unreadable } = yield* store.list;
     const kept = stored.filter((book) => !isUnconfirmed(book.status));
 
     for (const book of stored) {
@@ -376,7 +395,8 @@ export const make = Effect.gen(function* () {
 
     yield* SubscriptionRef.set(books, new Map(kept.map((book) => [book.id, book])));
 
-    const known = new Set<string>(kept.map((book) => book.id));
+    // A row this version cannot read still owns its files.
+    const known = new Set<string>([...kept.map((book) => book.id), ...unreadable]);
 
     for (const directory of yield* files.stored) {
       if (!known.has(directory)) yield* files.removeAll(directory);

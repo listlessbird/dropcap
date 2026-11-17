@@ -25,7 +25,14 @@ export class BookStoreError extends Schema.TaggedError<BookStoreError>()("BookSt
 export class BookStore extends Context.Service<
   BookStore,
   {
-    readonly list: Effect.Effect<ReadonlyArray<Book>, BookStoreError>;
+    /**
+     * The books, and the ids of rows this version cannot read, such as ones a newer version wrote.
+     * Their files are left alone.
+     */
+    readonly list: Effect.Effect<
+      { readonly books: ReadonlyArray<Book>; readonly unreadable: ReadonlyArray<string> },
+      BookStoreError
+    >;
     readonly save: (book: Book) => Effect.Effect<void, BookStoreError>;
     readonly remove: (id: BookId) => Effect.Effect<void, BookStoreError>;
   }
@@ -40,7 +47,14 @@ export const make = Effect.gen(function* () {
   return BookStore.of({
     // A row this version cannot read drops out rather than hiding every other book.
     list: database.loadBooksJson.pipe(
-      Effect.map((rows) => rows.flatMap((row) => Option.toArray(decodeBookJson(row)))),
+      Effect.map((rows) => {
+        const decoded = rows.map(({ id, payload }) => ({ id, book: decodeBookJson(payload) }));
+
+        return {
+          books: decoded.flatMap(({ book }) => Option.toArray(book)),
+          unreadable: decoded.flatMap(({ id, book }) => (Option.isNone(book) ? [id] : [])),
+        };
+      }),
       Effect.mapError(storeError("list")),
       Effect.withSpan("BookStore.list"),
     ),
