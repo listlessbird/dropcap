@@ -1,0 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- An empty affinity keeps a sender's FLAG_ACTIVITY_NEW_TASK from stacking the sheet on the app's own task. -->
+    <activity
+      android:name="com.listlessbird.kindledrop.sharesheet.ShareActivity"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@style/Theme.KindleDrop.Share"
+      android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+      android:windowSoftInputMode="adjustResize">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="application/epub+zip" />
+        <data android:mimeType="application/pdf" />
+        <!-- Many apps share an EPUB without knowing its type. -->
+        <data android:mimeType="application/octet-stream" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
