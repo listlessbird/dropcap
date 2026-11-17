@@ -16,7 +16,8 @@ export const chooseFileAtom = Atom.runtime(Runtime.layer)
       const picker = yield* Effect.promise(() => import("expo-document-picker"));
 
       const picked = yield* Effect.promise(() =>
-        picker.getDocumentAsync({ type: PICKABLE, copyToCacheDirectory: true }),
+        // The book is copied into the app once, straight from the picked file's content URI.
+        picker.getDocumentAsync({ type: PICKABLE, copyToCacheDirectory: false }),
       );
 
       const asset = picked.canceled ? undefined : picked.assets[0];
