@@ -323,6 +323,26 @@ export const make = Effect.gen(function* () {
     }
   });
 
+  // A cleared failed upload keeps its record until the mailbox confirms its items are gone, so a
+  // stray cover never reaches the Kindle because the phone was offline when the user cleared it.
+  const removeLeftovers = Effect.fn("Sender.removeLeftovers")(function* (id: BookId) {
+    const book = yield* current(id);
+    const paired = yield* connection;
+
+    if (Option.isNone(paired)) return;
+
+    const items = Option.match(book, {
+      onNone: (): ReadonlyArray<ItemKey> => [],
+      onSome: ({ status }) =>
+        BookStatus.matchOrElse(status, { Clearing: ({ items }) => items }, () => []),
+    });
+
+    if (items.length === 0) return;
+
+    yield* Effect.forEach(items, (key) => mailbox.cancel(paired.value, key), { discard: true });
+    yield* forget(id);
+  });
+
   // The mailbox answered, so the phone is online: retry what failed for want of a connection.
   const resume = Effect.gen(function* () {
     for (const book of (yield* SubscriptionRef.get(books)).values()) {
@@ -337,6 +357,10 @@ export const make = Effect.gen(function* () {
 
     for (const book of (yield* SubscriptionRef.get(books)).values()) {
       if (isInFlight(book.status)) yield* drive(book.id);
+
+      if (BookStatus.guards.Clearing(book.status)) {
+        yield* removeLeftovers(book.id).pipe(Effect.ignore);
+      }
     }
   });
 
@@ -460,20 +484,11 @@ export const make = Effect.gen(function* () {
 
           if (Option.isNone(book)) return;
 
-          // A failed upload may have left its thumbnail. Removing it keeps a stray cover off the Kindle.
-          const paired = yield* connection;
+          if (claimedItems(book.value.status).length === 0) return yield* forget(id);
 
-          const left = BookStatus.matchOrElse(
-            book.value.status,
-            { UploadFailed: ({ uploaded }) => uploaded },
-            () => [],
-          );
-
-          if (Option.isSome(paired)) {
-            yield* Effect.forEach(left, (key) => Effect.ignore(mailbox.cancel(paired.value, key)));
-          }
-
-          yield* forget(id);
+          yield* apply(id, BookEvent.Cleared());
+          yield* files.removeAll(id);
+          yield* removeLeftovers(id);
         }),
       ),
     refresh: Effect.gen(function* () {

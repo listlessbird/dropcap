@@ -29,7 +29,7 @@ const connection = Schema.decodeUnknownSync(Connection)({
   key: "dev-app",
 });
 
-const { Converting, ConvertFailed, Ready, Uploading, Waiting } = BookStatus.cases;
+const { Converting, ConvertFailed, Ready, Uploading, UploadFailed, Waiting } = BookStatus.cases;
 
 const converted: Converted = {
   title: "House of Chains",
@@ -520,6 +520,37 @@ describe("Sender", () => {
           [],
         );
         assert.strictEqual((yield* Ref.get(phone.waiting)).length, 4);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("keeps removing a failed upload's stray cover after it is cleared offline", () =>
+    Effect.gen(function* () {
+      const cover = itemKey(1_000, THUMBNAIL);
+
+      const phone = yield* world(
+        [
+          storedBook(
+            "b1",
+            UploadFailed.make({ converted, uploaded: [cover], reason: "unexpected" }),
+          ),
+        ],
+        [cover],
+      );
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+
+        yield* Ref.set(phone.online, false);
+        yield* sender.clear(BookId.make("b1"));
+
+        assert.deepStrictEqual(yield* Ref.get(phone.waiting), [cover]);
+
+        yield* Ref.set(phone.online, true);
+        yield* sender.refresh;
+
+        assert.deepStrictEqual(yield* Ref.get(phone.waiting), []);
+        assert.isFalse((yield* Ref.get(phone.rows)).has("b1"));
       }).pipe(Effect.provide(phone.layer));
     }),
   );

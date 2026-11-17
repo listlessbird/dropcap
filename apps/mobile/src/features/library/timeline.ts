@@ -84,6 +84,7 @@ export const timelineOf = (
       step("Waiting for Kindle", "next", `Sending canceled · ${dayAndTime(at, now)}`),
       step("On Kindle", "next"),
     ],
+    Clearing: () => [],
   });
 
   const steps = [first, uploaded, waiting, onKindle].flatMap((s) => (s ? [s] : []));

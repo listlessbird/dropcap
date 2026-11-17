@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { AsyncResult, Atom } from "effect/reactivity";
 
-import type { BookId } from "../features/sending/book";
+import { BookStatus, type BookId } from "../features/sending/book";
 import { Sender } from "../features/sending/sender";
 import * as Runtime from "../lib/runtime";
 
@@ -20,8 +20,11 @@ export function createBooksState<E>(runtime: Atom.AtomRuntime<Sender, E>) {
 
   const bookAtom = Atom.family((id: BookId) =>
     Atom.make((get) =>
+      // A book being cleared is gone as far as the user is concerned.
       AsyncResult.map(get(booksAtom), (books) =>
-        Option.fromNullishOr(books.find((book) => book.id === id)),
+        Option.fromNullishOr(
+          books.find((book) => book.id === id && !BookStatus.guards.Clearing(book.status)),
+        ),
       ),
     ).pipe(Atom.withLabel(`book:${id}`)),
   );

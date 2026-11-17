@@ -63,6 +63,8 @@ export const BookStatus = Schema.TaggedUnion({
     reason: MailboxErrorReason,
   },
   Canceled: { converted: Converted, at: Schema.DateTimeUtcFromMillis },
+  /** Cleared from Recent, with items a failed upload left in the mailbox still to remove. */
+  Clearing: { items: Schema.Array(ItemKey) },
 });
 
 export type BookStatus = typeof BookStatus.Type;
@@ -85,12 +87,22 @@ export type BookEvent = Data.TaggedEnum<{
   MailboxChecked: { readonly status: MailboxStatus };
   SendingCanceled: { readonly at: DateTime.Utc };
   Retried: {};
+  Cleared: {};
 }>;
 
 export const BookEvent = Data.taggedEnum<BookEvent>();
 
-const { Converting, Ready, Uploading, Waiting, OnKindle, ConvertFailed, UploadFailed, Canceled } =
-  BookStatus.cases;
+const {
+  Converting,
+  Ready,
+  Uploading,
+  Waiting,
+  OnKindle,
+  ConvertFailed,
+  UploadFailed,
+  Canceled,
+  Clearing,
+} = BookStatus.cases;
 
 /** The thumbnail goes first: the Kindle installs a cover before it indexes the book. */
 export const itemNames = (converted: Converted): ReadonlyArray<ItemName> => [
@@ -190,6 +202,12 @@ const next = (status: BookStatus, event: BookEvent): BookStatus => {
         },
         unchanged,
       ),
+    Cleared: () =>
+      BookStatus.matchOrElse(
+        status,
+        { UploadFailed: ({ uploaded }) => Clearing.make({ items: uploaded }) },
+        unchanged,
+      ),
   });
 };
 
@@ -229,6 +247,7 @@ export const claimedItems = (status: BookStatus): ReadonlyArray<ItemKey> =>
     {
       Uploading: ({ uploaded }) => uploaded,
       UploadFailed: ({ uploaded }) => uploaded,
+      Clearing: ({ items }) => items,
       Waiting: ({ items }) => items,
       OnKindle: ({ items }) => items,
     },

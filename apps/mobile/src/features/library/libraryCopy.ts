@@ -60,6 +60,7 @@ export const statusLine = (
     ConvertFailed: () => ({ text: "Couldn't convert · Tap for details", tone: "danger" }),
     UploadFailed: () => ({ text: "Couldn't upload · Tap for details", tone: "danger" }),
     Canceled: ({ at }) => ({ text: `Sending canceled · ${relativeTime(at, now)}`, tone: "muted" }),
+    Clearing: () => ({ text: "Sending canceled", tone: "muted" }),
   });
 
 const isSending = (book: Book) =>
