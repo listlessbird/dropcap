@@ -105,6 +105,9 @@ export const make = Effect.gen(function* () {
   // One fiber per book, so a resume, a retry and a confirm never work on the same book at once.
   const work = yield* FiberMap.make<BookId>();
   const writes = yield* Semaphore.make(1);
+  // One upload at a time across books. An item another upload just stored, but has not recorded,
+  // would otherwise look left over from a crash, and two books could claim it.
+  const uploads = yield* Semaphore.make(1);
 
   const current = (id: BookId) =>
     Effect.map(SubscriptionRef.get(books), (all) => Option.fromNullishOr(all.get(id)));
@@ -225,7 +228,7 @@ export const make = Effect.gen(function* () {
 
     if (name === undefined) return false;
 
-    const sent = yield* Effect.gen(function* () {
+    return yield* Effect.gen(function* () {
       const { waiting } = yield* mailbox.status(paired.value);
 
       const claimed = new Set(
@@ -246,9 +249,8 @@ export const make = Effect.gen(function* () {
         onFailure: ({ reason }) => Effect.as(apply(id, BookEvent.UploadFailed({ reason })), false),
         onSuccess: (key) => Effect.as(apply(id, BookEvent.ItemUploaded({ key })), true),
       }),
+      uploads.withPermit,
     );
-
-    return sent;
   });
 
   // Changes emit the current value first, so this returns at once if the status already moved.

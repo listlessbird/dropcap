@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { ItemName, itemKey, nameOfKey, type ItemKey } from "@kindle-drop/worker/Api";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -54,6 +55,11 @@ const epub = {
 
 interface Overrides {
   readonly convertEpub?: KindleCore["Service"]["convertEpub"];
+  /** Holds the first upload after the mailbox stored it, before the app hears back. */
+  readonly holdFirstUpload?: {
+    readonly stored: Deferred.Deferred<void>;
+    readonly release: Deferred.Deferred<void>;
+  };
 }
 
 const notAnEpub = new ConvertError({ stage: "Epub", message: "invalid zip archive" });
@@ -72,6 +78,7 @@ const world = (
     const checkedInAt = yield* Ref.make(Option.none<DateTime.Utc>());
     const directories = yield* Ref.make<ReadonlyArray<string>>(books.map((book) => book.id));
     const removed = yield* Ref.make<ReadonlyArray<string>>([]);
+    const uploadCalls = yield* Ref.make(0);
 
     const store = Layer.succeed(
       BookStore,
@@ -139,6 +146,13 @@ const world = (
 
               yield* Ref.update(waiting, (all) => [...all, key].sort());
               yield* Ref.update(uploads, (all) => [...all, name]);
+
+              const hold = overrides.holdFirstUpload;
+
+              if (hold && (yield* Ref.getAndUpdate(uploadCalls, (n) => n + 1)) === 0) {
+                yield* Deferred.succeed(hold.stored, undefined);
+                yield* Deferred.await(hold.release);
+              }
 
               return key;
             }),
@@ -467,6 +481,45 @@ describe("Sender", () => {
 
         assert.isTrue(Option.exists(yield* statusOf(id), BookStatus.guards.OnKindle));
         assert.deepStrictEqual(yield* Ref.get(phone.waiting), []);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("never lets two sends of the same book share a mailbox item", () =>
+    Effect.gen(function* () {
+      const stored = yield* Deferred.make<void>();
+      const release = yield* Deferred.make<void>();
+      const phone = yield* world([], [], { holdFirstUpload: { stored, release } });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const first = yield* sender.add(epub, true);
+
+        // The first cover is in the mailbox, and its book has not recorded it yet.
+        yield* Deferred.await(stored);
+
+        const second = yield* sender.add(epub, true);
+
+        yield* Deferred.succeed(release, undefined);
+        yield* until(first, "Waiting");
+        yield* until(second, "Waiting");
+
+        const itemsOf = (id: BookId) =>
+          Effect.map(statusOf(id), (status) =>
+            Option.match(Option.filter(status, BookStatus.guards.Waiting), {
+              onNone: (): ReadonlyArray<ItemKey> => [],
+              onSome: ({ items }) => items,
+            }),
+          );
+
+        const firstItems = yield* itemsOf(first);
+        const secondItems = yield* itemsOf(second);
+
+        assert.deepStrictEqual(
+          firstItems.filter((key) => secondItems.includes(key)),
+          [],
+        );
+        assert.strictEqual((yield* Ref.get(phone.waiting)).length, 4);
       }).pipe(Effect.provide(phone.layer));
     }),
   );
