@@ -16,8 +16,8 @@ import { ConnectScreen } from "./features/connect/ConnectScreen";
 import { EnterDetailsScreen } from "./features/connect/EnterDetailsScreen";
 import { ScanPairingCodeScreen } from "./features/connect/ScanPairingCodeScreen";
 import { ComponentCatalogScreen } from "./features/development/ComponentCatalogScreen";
-import { KindleCoreScreen } from "./features/development/KindleCoreScreen";
-import { HomeScreen } from "./features/home/HomeScreen";
+import { BookScreen } from "./features/library/BookScreen";
+import { LibraryScreen } from "./features/library/LibraryScreen";
 import { useAppearance } from "./features/settings/appearance/AppearanceProvider";
 import { SettingsScreen } from "./features/settings/SettingsScreen";
 import { connectionAtom } from "./state/connection";
@@ -50,7 +50,7 @@ function useIsDisconnected() {
 }
 
 // Each screen's `linking` path is also its deep link: kindledrop://settings opens Settings. The
-// groups swap when the connection changes, so pairing lands on Home and disconnecting on Connect.
+// groups swap when the connection changes, so pairing lands on Library and disconnecting on Connect.
 const RootStack = createNativeStackNavigator({
   screenOptions: {
     headerShadowVisible: false,
@@ -61,10 +61,15 @@ const RootStack = createNativeStackNavigator({
     Connected: {
       if: useIsConnected,
       screens: {
-        Home: {
-          screen: HomeScreen,
+        Library: {
+          screen: LibraryScreen,
           linking: "",
           options: { title: "Kindle Drop", headerRight: SettingsButton },
+        },
+        Book: {
+          screen: BookScreen,
+          linking: "book/:id",
+          options: { title: "" },
         },
         Settings: {
           screen: SettingsScreen,
@@ -76,11 +81,6 @@ const RootStack = createNativeStackNavigator({
           screen: ComponentCatalogScreen,
           linking: "dev/components",
           options: { title: "Components" },
-        },
-        KindleCore: {
-          screen: KindleCoreScreen,
-          linking: "dev/kindle-core",
-          options: { title: "Kindle core" },
         },
       },
     },

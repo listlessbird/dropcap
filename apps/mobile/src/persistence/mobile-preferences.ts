@@ -20,6 +20,8 @@ export type ThemeMode = typeof ThemeMode.Type;
 export const Preferences = Schema.Struct({
   themeMode: preference(ThemeMode),
   themeId: preference(Schema.Literals(THEME_IDS)),
+  /** Absent means on: a share opens the sheet before anything is sent. */
+  confirmBeforeSending: preference(Schema.Boolean),
 });
 
 export type Preferences = typeof Preferences.Type;

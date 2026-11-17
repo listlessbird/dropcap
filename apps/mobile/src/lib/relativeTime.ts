@@ -24,3 +24,23 @@ export function relativeTime(then: DateTime.Utc, now: DateTime.Utc): string {
 
   return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
 }
+
+const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+/** "Today, 2:14 pm", "Yesterday, 9:03 am", then "12 Oct, 2:14 pm", in the phone's time zone. */
+export function dayAndTime(then: DateTime.Utc, now: DateTime.Utc): string {
+  const date = DateTime.toDate(then);
+  const today = DateTime.toDate(now);
+  const yesterday = DateTime.toDate(DateTime.subtractDuration(now, Duration.days(1)));
+
+  const hours = date.getHours();
+  const time = `${hours % 12 || 12}:${String(date.getMinutes()).padStart(2, "0")} ${hours < 12 ? "am" : "pm"}`;
+
+  const day = isSameDay(date, today)
+    ? "Today"
+    : isSameDay(date, yesterday)
+      ? "Yesterday"
+      : `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+
+  return `${day}, ${time}`;
+}

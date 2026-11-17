@@ -1,4 +1,3 @@
-import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -82,24 +81,11 @@ export function createConnectionState<E>(
     )
     .pipe(Atom.withLabel("connection:disconnect"));
 
-  /** The mailbox's view of the Kindle, and when this phone asked. Refresh it to ask again. */
-  const kindleStatusAtom = runtime
-    .atom((get) =>
-      Effect.gen(function* () {
-        const connection = yield* Effect.fromOption(yield* get.result(connectionAtom));
-        const status = yield* MailboxClient.use((client) => client.status(connection));
-
-        return { ...status, askedAt: yield* DateTime.now };
-      }),
-    )
-    .pipe(Atom.withLabel("connection:kindle-status"));
-
   return {
     connectionAtom,
     pairWithCodeAtom,
     pairWithDetailsAtom,
     disconnectAtom,
-    kindleStatusAtom,
   } as const;
 }
 
@@ -109,4 +95,3 @@ export const connectionAtom = connectionState.connectionAtom;
 export const pairWithCodeAtom = connectionState.pairWithCodeAtom;
 export const pairWithDetailsAtom = connectionState.pairWithDetailsAtom;
 export const disconnectAtom = connectionState.disconnectAtom;
-export const kindleStatusAtom = connectionState.kindleStatusAtom;

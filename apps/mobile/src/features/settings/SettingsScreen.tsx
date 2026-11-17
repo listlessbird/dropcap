@@ -17,7 +17,10 @@ import { ListSection } from "../../components/ui/ListSection";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { relativeTime } from "../../lib/relativeTime";
 import { THEME_OPTIONS } from "../../lib/theme";
-import { disconnectAtom, kindleStatusAtom } from "../../state/connection";
+import { ListToggleRow } from "../../components/ui/ListToggleRow";
+import { booksState } from "../../state/books";
+import { disconnectAtom } from "../../state/connection";
+import { preferencesAtom, updatePreferencesAtom } from "../../state/preferences";
 import { useAppearance } from "./appearance/AppearanceProvider";
 
 const MODE_OPTIONS = [
@@ -33,8 +36,8 @@ const STATUS_ERROR = {
 } as const;
 
 function KindleSection() {
-  const status = useAtomValue(kindleStatusAtom);
-  const refresh = useAtomRefresh(kindleStatusAtom);
+  const status = useAtomValue(booksState.kindleStatusAtom);
+  const refresh = useAtomRefresh(booksState.kindleStatusAtom);
 
   useFocusEffect(() => {
     refresh();
@@ -73,6 +76,26 @@ function KindleSection() {
   );
 }
 
+function SendingSection() {
+  const preferences = useAtomValue(preferencesAtom);
+  const update = useAtomSet(updatePreferencesAtom);
+
+  const confirm = AsyncResult.value(preferences).pipe(
+    Option.flatMap((value) => Option.fromNullishOr(value.confirmBeforeSending)),
+    Option.getOrElse(() => true),
+  );
+
+  return (
+    <ListSection title="Sending">
+      <ListToggleRow
+        label="Confirm before sending"
+        value={confirm}
+        onValueChange={(value) => update({ confirmBeforeSending: value })}
+      />
+    </ListSection>
+  );
+}
+
 export function SettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -86,6 +109,8 @@ export function SettingsScreen() {
     >
       <View className="gap-6 px-4">
         <KindleSection />
+
+        <SendingSection />
 
         <ListSection title="Appearance">
           <View className="p-3">
@@ -120,11 +145,6 @@ export function SettingsScreen() {
               icon="layout-grid"
               label="Component catalog"
               onPress={() => navigation.navigate("Components")}
-            />
-            <ListRow
-              icon="book"
-              label="Kindle core"
-              onPress={() => navigation.navigate("KindleCore")}
             />
           </ListSection>
         ) : null}

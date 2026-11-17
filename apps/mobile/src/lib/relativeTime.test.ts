@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 
-import { relativeTime } from "./relativeTime";
+import { dayAndTime, relativeTime } from "./relativeTime";
 
 const now = DateTime.fromDateUnsafe(new Date(2026, 9, 28, 12, 0));
 const ago = (duration: Duration.Input) => DateTime.subtractDuration(now, duration);
@@ -15,5 +15,14 @@ describe("relativeTime", () => {
     assert.strictEqual(relativeTime(ago("30 hours"), now), "Yesterday");
     assert.strictEqual(relativeTime(ago("3 days"), now), "3 days ago");
     assert.strictEqual(relativeTime(ago("16 days"), now), "12 Oct");
+  });
+
+  it("names the day and the clock time for timeline steps", () => {
+    const at = (day: number, hours: number, minutes: number) =>
+      DateTime.fromDateUnsafe(new Date(2026, 9, day, hours, minutes));
+
+    assert.strictEqual(dayAndTime(at(28, 14, 14), now), "Today, 2:14 pm");
+    assert.strictEqual(dayAndTime(at(27, 0, 5), now), "Yesterday, 12:05 am");
+    assert.strictEqual(dayAndTime(at(12, 9, 3), now), "12 Oct, 9:03 am");
   });
 });

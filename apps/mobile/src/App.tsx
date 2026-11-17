@@ -11,6 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Dialog from "./components/ui/Dialog";
 import { OverlayPortalHost } from "./components/ui/OverlayPortal";
 import { installPairingLinks } from "./features/connect/pairingLinks";
+import { installForegroundRefresh } from "./features/library/foregroundRefresh";
 import {
   AppearanceProvider,
   installAppearanceRuntime,
@@ -28,7 +29,11 @@ declare const module: { readonly hot?: FoundationHotModule } | undefined;
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // App-lifetime services. Each returns its own teardown, which Fast Refresh runs on replacement.
-const appServiceDisposers = [installAppearanceRuntime(), installPairingLinks()];
+const appServiceDisposers = [
+  installAppearanceRuntime(),
+  installPairingLinks(),
+  installForegroundRefresh(),
+];
 
 disposeOnFoundationReplace(typeof module === "undefined" ? undefined : module.hot, () => {
   for (const dispose of appServiceDisposers) dispose();
