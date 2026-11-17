@@ -99,6 +99,18 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 | Connection not saved | Couldn't save the connection. Try again. |
 | Settings, status check failed | Couldn't check on your Kindle. Check your connection and try again. (offline) or Try again in a few minutes. (server) |
 | Settings, Last check-in | "2 h ago", "Not yet" before the first check-in, "Checking" while loading, "Unknown" when it can't be fetched |
+| Library chip, no check-in yet | Kindle hasn't checked in yet (amber dot) |
+| Library chip, status unknown | Couldn't check on your Kindle (no dot), shown only when no earlier answer exists |
+| Library row, failed | "Couldn't convert · Tap for details" or "Couldn't upload · Tap for details", in the danger color |
+| Library row, canceled | Sending canceled · 2 h ago |
+| Upload failed, key rejected | This pairing code no longer works. Create a new one on your computer. |
+| Cancel sending failed | Couldn't cancel sending. Check your connection and try again. (offline) or Try again in a few minutes. (server) |
+| Shared file unreadable | Couldn't open this file. Try sharing it again. |
+| Share sheet, not connected | Title "Connect your Kindle", body "Scan the pairing code from your computer, then share the book again", actions **Connect Kindle** and **Cancel** |
+| Share sheet, unsupported file | Title is the file's name, body is the unsupported file copy, action **Close** |
+| Book, timeline failure | "Couldn't convert" or "Couldn't upload" under the step that failed |
+| Book, canceled | "Sending canceled · 28 Oct, 10:05 am" under Waiting for Kindle |
+| Book, missing | Title "Book not found", body "It may have been cleared from Recent" |
 
 Write new copy in this voice and add it to the catalog.
 
