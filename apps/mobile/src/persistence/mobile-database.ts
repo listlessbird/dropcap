@@ -14,6 +14,11 @@ const MIGRATIONS: ReadonlyArray<string> = [
      payload TEXT NOT NULL,
      updated_at INTEGER NOT NULL
    );`,
+  `CREATE TABLE books (
+     id TEXT PRIMARY KEY NOT NULL,
+     added_at INTEGER NOT NULL,
+     payload TEXT NOT NULL
+   );`,
 ];
 
 const MobileDatabaseOperation = Schema.Literals([
@@ -21,6 +26,9 @@ const MobileDatabaseOperation = Schema.Literals([
   "migrate",
   "load-preferences",
   "save-preferences",
+  "load-books",
+  "save-book",
+  "delete-book",
 ]);
 
 export class MobileDatabaseError extends Schema.TaggedError<MobileDatabaseError>()(
@@ -54,6 +62,14 @@ export class MobileDatabase extends Context.Service<
       payload: string,
       updatedAt: number,
     ) => Effect.Effect<void, MobileDatabaseError>;
+    /** Every book's payload, oldest first. */
+    readonly loadBooksJson: Effect.Effect<ReadonlyArray<string>, MobileDatabaseError>;
+    readonly saveBookJson: (
+      id: string,
+      addedAt: number,
+      payload: string,
+    ) => Effect.Effect<void, MobileDatabaseError>;
+    readonly deleteBook: (id: string) => Effect.Effect<void, MobileDatabaseError>;
   }
 >()("@kindle-drop/mobile/persistence/MobileDatabase") {}
 
@@ -108,6 +124,32 @@ export const make = Effect.gen(function* () {
             updatedAt,
           ),
         catch: databaseError("save-preferences"),
+      }).pipe(Effect.asVoid),
+    ),
+    loadBooksJson: Effect.tryPromise({
+      try: () =>
+        database.getAllAsync<{ readonly payload: string }>(
+          "SELECT payload FROM books ORDER BY added_at",
+        ),
+      catch: databaseError("load-books"),
+    }).pipe(Effect.map((rows) => rows.map((row) => row.payload))),
+    saveBookJson: Effect.fn("MobileDatabase.saveBookJson")((id, addedAt, payload) =>
+      Effect.tryPromise({
+        try: () =>
+          database.runAsync(
+            `INSERT INTO books (id, added_at, payload) VALUES (?, ?, ?)
+             ON CONFLICT (id) DO UPDATE SET payload = excluded.payload`,
+            id,
+            addedAt,
+            payload,
+          ),
+        catch: databaseError("save-book"),
+      }).pipe(Effect.asVoid),
+    ),
+    deleteBook: Effect.fn("MobileDatabase.deleteBook")((id) =>
+      Effect.tryPromise({
+        try: () => database.runAsync("DELETE FROM books WHERE id = ?", id),
+        catch: databaseError("delete-book"),
       }).pipe(Effect.asVoid),
     ),
   });

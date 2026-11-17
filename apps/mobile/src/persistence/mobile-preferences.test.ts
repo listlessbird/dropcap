@@ -18,6 +18,9 @@ const storeWith = (initial: Option.Option<string>) =>
           Effect.map(Option.map((payload) => ({ payload, updatedAt: 0 }))),
         ),
         savePreferencesJson: (payload) => Ref.set(row, Option.some(payload)),
+        loadBooksJson: Effect.succeed([]),
+        saveBookJson: () => Effect.void,
+        deleteBook: () => Effect.void,
       }),
     );
 
