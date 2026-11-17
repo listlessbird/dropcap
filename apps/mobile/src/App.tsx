@@ -11,7 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Dialog from "./components/ui/Dialog";
 import { OverlayPortalHost } from "./components/ui/OverlayPortal";
 import { installPairingLinks } from "./features/connect/pairingLinks";
-import { installForegroundRefresh } from "./features/library/foregroundRefresh";
+import { installKindleRefresh } from "./features/library/kindleRefresh";
 import {
   AppearanceProvider,
   installAppearanceRuntime,
@@ -32,7 +32,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 const appServiceDisposers = [
   installAppearanceRuntime(),
   installPairingLinks(),
-  installForegroundRefresh(),
+  installKindleRefresh(),
 ];
 
 disposeOnFoundationReplace(typeof module === "undefined" ? undefined : module.hot, () => {
