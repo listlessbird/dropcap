@@ -1,5 +1,5 @@
 import { ItemName, type ItemKey, type MailboxStatus } from "@kindle-drop/worker/Api";
-import type * as Cause from "effect/Cause";
+import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -192,11 +192,15 @@ export const make = Effect.gen(function* () {
           return converted;
         }),
       ),
-      Effect.matchEffect({
-        onFailure: (error) =>
-          Effect.logWarning("Could not convert a book.", error).pipe(
-            Effect.andThen(apply(id, BookEvent.ConvertFailed())),
-          ),
+      // A panic in the Rust converter arrives as a defect. It fails the book like any other
+      // conversion error, or the book would stay Converting and crash again on every resume.
+      Effect.matchCauseEffect({
+        onFailure: (cause) =>
+          Cause.hasInterruptsOnly(cause)
+            ? Effect.interrupt
+            : Effect.logWarning("Could not convert a book.", cause).pipe(
+                Effect.andThen(apply(id, BookEvent.ConvertFailed())),
+              ),
         onSuccess: (converted) =>
           apply(id, BookEvent.Converted({ converted })).pipe(
             Effect.andThen(files.remove(id, [SOURCE_EPUB])),

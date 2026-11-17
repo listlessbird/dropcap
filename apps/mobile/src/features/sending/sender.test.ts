@@ -384,4 +384,19 @@ describe("Sender", () => {
       assert.deepStrictEqual([...(yield* Ref.get(phone.rows)).keys()], []);
     }),
   );
+
+  it.effect("fails the book when the converter crashes instead of leaving it converting", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], {
+        convertEpub: () => Effect.die(new Error("Rust panicked in kindling")),
+      });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(epub, true);
+
+        yield* until(id, "ConvertFailed");
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
 });
