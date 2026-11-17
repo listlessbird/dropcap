@@ -505,7 +505,15 @@ export const make = Effect.gen(function* () {
 
           if (Option.isNone(book)) return;
 
-          if (claimedItems(book.value.status).length === 0) return yield* forget(id);
+          // Only a failed upload left items the Kindle should never get. A delivered book's items
+          // are already gone from the mailbox.
+          const left = BookStatus.matchOrElse(
+            book.value.status,
+            { UploadFailed: ({ uploaded }) => uploaded },
+            () => [],
+          );
+
+          if (left.length === 0) return yield* forget(id);
 
           yield* apply(id, BookEvent.Cleared());
           yield* files.removeAll(id);

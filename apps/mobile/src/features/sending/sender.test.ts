@@ -30,7 +30,8 @@ const connection = Schema.decodeUnknownSync(Connection)({
   key: "dev-app",
 });
 
-const { Converting, ConvertFailed, Ready, Uploading, UploadFailed, Waiting } = BookStatus.cases;
+const { Converting, ConvertFailed, OnKindle, Ready, Uploading, UploadFailed, Waiting } =
+  BookStatus.cases;
 
 const converted: Converted = {
   title: "House of Chains",
@@ -630,6 +631,25 @@ describe("Sender", () => {
 
         assert.deepStrictEqual(yield* Ref.get(phone.directories), []);
         assert.strictEqual((yield* Ref.get(phone.rows)).size, 0);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("clears a book that is on the Kindle from Recent", () =>
+    Effect.gen(function* () {
+      const items = [itemKey(1_000, THUMBNAIL), itemKey(1_500, BOOK)] as const;
+
+      const phone = yield* world([
+        storedBook(
+          "b1",
+          OnKindle.make({ converted, items, arrivedAt: DateTime.makeUnsafe(2_000) }),
+        ),
+      ]);
+
+      yield* Effect.gen(function* () {
+        yield* Sender.use((sender) => sender.clear(BookId.make("b1")));
+
+        assert.isFalse((yield* Ref.get(phone.rows)).has("b1"));
       }).pipe(Effect.provide(phone.layer));
     }),
   );
