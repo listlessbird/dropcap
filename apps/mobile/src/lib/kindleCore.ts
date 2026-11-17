@@ -1,4 +1,4 @@
-import * as Native from "@kindle-drop/kindle-core";
+import type * as Native from "@kindle-drop/kindle-core";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -7,7 +7,7 @@ import * as Schema from "effect/Schema";
 export type Converted = Native.Converted;
 
 export class ConvertError extends Schema.TaggedError<ConvertError>()("ConvertError", {
-  stage: Schema.Enum(Native.ConvertError_Tags),
+  stage: Schema.Literals(["Epub", "Build", "Thumbnail", "Io"]),
   message: Schema.String,
 }) {}
 
@@ -27,20 +27,27 @@ export class KindleCore extends Context.Service<
   }
 >()("@kindle-drop/mobile/lib/KindleCore") {}
 
-const convertEpub = Effect.fn("KindleCore.convertEpub")(function* (
-  epubPath: string,
-  outDir: string,
-) {
-  return yield* Effect.tryPromise({
-    try: (signal) => Native.convertEpub(epubPath, outDir, { signal }),
-    catch: (cause) => cause,
-  }).pipe(
-    Effect.catch((cause) =>
-      Native.ConvertError.instanceOf(cause)
-        ? Effect.fail(new ConvertError({ stage: cause.tag, message: cause.inner[0] }))
-        : Effect.die(cause),
-    ),
-  );
+export const make = Effect.gen(function* () {
+  // Imported lazily: loading the module installs the Rust crate, which Node tests cannot do.
+  const native = yield* Effect.promise(() => import("@kindle-drop/kindle-core"));
+
+  const convertEpub = Effect.fn("KindleCore.convertEpub")(function* (
+    epubPath: string,
+    outDir: string,
+  ) {
+    return yield* Effect.tryPromise({
+      try: (signal) => native.convertEpub(epubPath, outDir, { signal }),
+      catch: (cause) => cause,
+    }).pipe(
+      Effect.catch((cause) =>
+        native.ConvertError.instanceOf(cause)
+          ? Effect.fail(new ConvertError({ stage: cause.tag, message: cause.inner[0] }))
+          : Effect.die(cause),
+      ),
+    );
+  });
+
+  return KindleCore.of({ convertEpub });
 });
 
-export const layer = Layer.succeed(KindleCore, KindleCore.of({ convertEpub }));
+export const layer = Layer.effect(KindleCore, make);
