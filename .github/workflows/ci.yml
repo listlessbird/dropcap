@@ -39,7 +39,7 @@ jobs:
         run: pnpm vp run -r typecheck
 
       - name: Test
-        run: pnpm vp run -r test
+        run: pnpm vp run test
 
       - name: Generated theme is current
         run: pnpm --filter @kindle-drop/mobile generate --check

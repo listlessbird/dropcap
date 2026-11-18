@@ -9,7 +9,6 @@
     "dev": "alchemy dev",
     "deploy": "alchemy deploy --stage prod",
     "pair": "node scripts/pair.ts",
-    "test": "vp test run --config ../../vite.config.ts --dir .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
