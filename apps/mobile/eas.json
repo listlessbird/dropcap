@@ -22,12 +22,8 @@
       "env": { "APP_VARIANT": "production" },
       "channel": "production",
       "environment": "production",
-      "autoIncrement": true
-    }
-  },
-  "submit": {
-    "production": {
-      "android": { "track": "internal" }
+      "autoIncrement": true,
+      "android": { "buildType": "apk" }
     }
   }
 }
