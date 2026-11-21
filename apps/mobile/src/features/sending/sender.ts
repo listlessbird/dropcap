@@ -28,12 +28,13 @@ import {
   claimedItems,
   convertedOf,
   formatOf,
+  isConvertible,
   isInFlight,
   isUnconfirmed,
+  itemNameOf,
   itemNames,
   leftInMailbox,
-  pdfConverted,
-  pdfItemName,
+  sentAsShared,
   transition,
   type Book,
   type Converted,
@@ -213,6 +214,21 @@ export const make = Effect.gen(function* () {
             Effect.andThen(files.remove(id, [SOURCE_EPUB])),
           ),
       }),
+    );
+  });
+
+  // An AZW3 without a readable cover, such as a personal document with no ASIN, still goes.
+  const coverOf = Effect.fn("Sender.coverOf")(function* (id: BookId, book: ItemName) {
+    return yield* kindleCore.deviceThumbnail(files.path(id, book), files.path(id)).pipe(
+      Effect.flatMap(({ name }) => decodeItemName(name)),
+      Effect.asSome,
+      Effect.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.interrupt
+          : Effect.logWarning("Could not read an AZW3's cover.", cause).pipe(
+              Effect.as(Option.none<ItemName>()),
+            ),
+      ),
     );
   });
 
@@ -425,13 +441,18 @@ export const make = Effect.gen(function* () {
       );
 
       const id = yield* newId;
-      const pdfName = pdfItemName(file.name);
-      const storedAs = format === "epub" ? SOURCE_EPUB : pdfName;
+      const name = itemNameOf(file.name, format);
+      const storedAs = isConvertible(format) ? SOURCE_EPUB : name;
 
       // Also on interruption, as when the user leaves a share sheet while a large file copies.
-      const bytes = yield* files
-        .copyIn(id, file.uri, storedAs)
-        .pipe(Effect.onError(() => files.removeAll(id)));
+      const { bytes, thumbnail } = yield* Effect.gen(function* () {
+        const bytes = yield* files.copyIn(id, file.uri, storedAs);
+
+        return {
+          bytes,
+          thumbnail: format === "azw3" ? yield* coverOf(id, name) : Option.none<ItemName>(),
+        };
+      }).pipe(Effect.onError(() => files.removeAll(id)));
 
       const source = { name: file.name, format, bytes };
 
@@ -439,10 +460,9 @@ export const make = Effect.gen(function* () {
         id,
         addedAt: yield* DateTime.now,
         source,
-        status:
-          format === "epub"
-            ? BookStatus.cases.Converting.make({ confirmed })
-            : BookStatus.cases.Ready.make({ converted: pdfConverted(source, pdfName) }),
+        status: isConvertible(format)
+          ? BookStatus.cases.Converting.make({ confirmed })
+          : BookStatus.cases.Ready.make({ converted: sentAsShared(source, name, thumbnail) }),
       };
 
       yield* put(confirmed ? transition(added, BookEvent.Confirmed()) : added);

@@ -17,9 +17,12 @@ export const BookId = Schema.String.pipe(Schema.brand("BookId"));
 
 export type BookId = typeof BookId.Type;
 
-export const BookFormat = Schema.Literals(["epub", "pdf"]);
+export const BookFormat = Schema.Literals(["epub", "azw3", "pdf", "txt"]);
 
 export type BookFormat = typeof BookFormat.Type;
+
+/** Only an EPUB is converted. The Kindle reads the other formats as shared. */
+export const isConvertible = (format: BookFormat) => format === "epub";
 
 /** The file as the user shared it. */
 export const Source = Schema.Struct({
@@ -30,7 +33,10 @@ export const Source = Schema.Struct({
 
 export type Source = typeof Source.Type;
 
-/** What the Kindle receives. A PDF is its own book, with no thumbnail and no conversion time. */
+/**
+ * What the Kindle receives. A book sent as shared has no conversion time, and only an AZW3 that
+ * carries a cover has a thumbnail.
+ */
 export const Converted = Schema.Struct({
   title: Schema.String,
   author: Schema.String,
@@ -295,35 +301,45 @@ const decodeFormat = Schema.decodeUnknownOption(BookFormat);
 
 const FORMAT_OF_TYPE: ReadonlyMap<string, BookFormat> = new Map([
   ["application/epub+zip", "epub"],
+  ["application/vnd.amazon.mobi8-ebook", "azw3"],
+  ["application/x-mobi8-ebook", "azw3"],
   ["application/pdf", "pdf"],
+  ["text/plain", "txt"],
 ]);
 
-/** EPUB or PDF by MIME type, or by extension for senders that only say `application/octet-stream`. */
+const EXTENSION = /\.(epub|azw3|pdf|txt)$/i;
+
+/** The format by MIME type, or by extension for senders that only say `application/octet-stream`. */
 export const formatOf = (name: string, mimeType: Option.Option<string>) =>
   Option.orElse(
     Option.flatMapNullishOr(mimeType, (type) => FORMAT_OF_TYPE.get(type)),
-    () => decodeFormat(/\.(epub|pdf)$/i.exec(name)?.[1]?.toLowerCase()),
+    () => decodeFormat(EXTENSION.exec(name)?.[1]?.toLowerCase()),
   );
 
-const stem = (name: string) => name.replace(/\.(epub|pdf)$/i, "");
+/** The shared file's name without a format's extension, the title until conversion finds one. */
+export const stem = (name: string) => name.replace(EXTENSION, "");
 
 // What ts.sh's tab-separated listing and the Kindle's file system cannot take.
 const UNSAFE_IN_NAME = /[\u0000-\u001f\u007f/\\:*?"<>|]/g;
 
 /** The shared file's name, made safe for the mailbox. EPUBs keep the converter's names instead. */
-export const pdfItemName = (sharedName: string) => {
+export const itemNameOf = (sharedName: string, format: BookFormat) => {
   const safe = stem(sharedName).replace(UNSAFE_IN_NAME, "_").trim().slice(0, 120);
 
-  return ItemName.make(`${safe === "" ? "untitled" : safe}.pdf`);
+  return ItemName.make(`${safe === "" ? "untitled" : safe}.${format}`);
 };
 
-/** A PDF goes to the Kindle as shared. */
-export const pdfConverted = (source: Source, name: ItemName): Converted => ({
+/** A book the Kindle reads as shared, with the cover an AZW3 carries. */
+export const sentAsShared = (
+  source: Source,
+  name: ItemName,
+  thumbnail: Option.Option<ItemName>,
+): Converted => ({
   title: stem(source.name),
   author: "",
   book: name,
   bookBytes: source.bytes,
-  thumbnail: Option.none(),
+  thumbnail,
   convertedIn: Option.none(),
 });
 
