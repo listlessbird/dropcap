@@ -25,7 +25,10 @@ const [platform, ...rest] = process.argv.slice(2);
 const rebuild = rest.includes("--rebuild");
 const abiFlag = rest.indexOf("--abi");
 const requestedAbi = abiFlag === -1 ? undefined : rest[abiFlag + 1];
-const requestedSerial = rest.find((arg, index) => !arg.startsWith("--") && index !== abiFlag + 1);
+
+const requestedSerial = rest.find(
+  (arg, index) => !arg.startsWith("--") && (abiFlag === -1 || index !== abiFlag + 1),
+);
 
 const finish = (result: Record<string, string | boolean>, code = 0): never => {
   console.log(JSON.stringify(result));
