@@ -14,8 +14,8 @@ const SIZE = {
 } as const;
 
 /**
- * The Kindle thumbnail the converter made, or a plain book before conversion, for PDFs, and while a
- * shared file is still being copied in and has no book yet.
+ * The book's Kindle thumbnail, or a plain book before conversion, for a book without a cover, and
+ * while a shared file is still being copied in and has no book yet.
  */
 export function BookCover(props: { readonly book?: Book; readonly size: keyof typeof SIZE }) {
   const { className, icon } = SIZE[props.size];

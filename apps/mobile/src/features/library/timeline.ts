@@ -3,7 +3,7 @@ import * as Option from "effect/Option";
 
 import { dayAndTime } from "../../lib/relativeTime";
 import { megabytes, seconds } from "../../lib/units";
-import { BookStatus, convertedOf, uploadedAt, type Book } from "../sending/book";
+import { BookStatus, convertedOf, isConvertible, uploadedAt, type Book } from "../sending/book";
 
 export type StepState = "done" | "now" | "next" | "failed";
 
@@ -15,7 +15,10 @@ export interface Step {
 
 const ARRIVES = "Arrives the next time your Kindle wakes";
 
-/** Converted, Uploaded, Waiting for Kindle, On Kindle. A PDF has nothing to convert, so it starts at Uploaded. */
+/**
+ * Converted, Uploaded, Waiting for Kindle, On Kindle. A book sent as shared has nothing to convert,
+ * so it starts at Uploaded.
+ */
 export const timelineOf = (
   book: Book,
   progress: Option.Option<number>,
@@ -87,5 +90,5 @@ export const timelineOf = (
     Clearing: () => [],
   });
 
-  return book.source.format === "pdf" ? steps.slice(1) : steps;
+  return isConvertible(book.source.format) ? steps : steps.slice(1);
 };
