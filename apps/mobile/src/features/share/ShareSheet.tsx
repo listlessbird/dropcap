@@ -18,7 +18,7 @@ import { booksState } from "../../state/books";
 import { appAtomRegistry } from "../../state/atom-registry";
 import { BookCover } from "../library/BookCover";
 import { failureOf, FILE_UNREADABLE, FORMAT_LABEL, UNSUPPORTED_FILE } from "../library/libraryCopy";
-import { formatOf, labelOf, type Book, type BookFormat, type BookId } from "../sending/book";
+import { formatOf, labelOf, stem, type Book, type BookFormat, type BookId } from "../sending/book";
 import { AppearanceProvider } from "../settings/appearance/AppearanceProvider";
 import { closeSheet, ShareOutcome, shareAtom, SharedFile } from "./shareState";
 
@@ -230,7 +230,7 @@ function ShareSheet(props: { readonly shared: SharedFile }) {
   const pending = (
     <>
       <Summary
-        title={name.replace(/\.(epub|pdf)$/i, "")}
+        title={stem(name)}
         author=""
         detail={detailOf(
           formatOf(name, Option.fromNullishOr(shared.mimeType)),

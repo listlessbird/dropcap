@@ -49,7 +49,7 @@ The mockups are in [mockups.html](mockups.html). Open it in a browser.
 - A status chip at the top shows "Kindle checked in 2 h ago" with a green dot. When the Kindle hasn't checked in for more than a day, the dot turns amber and the chip stays neutral.
 - Under a "Sending" section, each row has a cover, title, author, and a status line. Converting shows an indeterminate bar. Uploading shows a determinate bar and "Uploading · 46%". Waiting shows "Waiting for Kindle".
 - Under a "Recent" section, rows show "On Kindle · Yesterday" or, for failures, "Couldn't convert · Tap for details" in the danger color. Recent keeps books for 30 days, the mailbox's lifetime. A long-press clears a row.
-- The empty state has the title "No books yet", the line "Share an EPUB or PDF from any app. It arrives the next time your Kindle wakes", and a "Choose a file" button.
+- The empty state has the title "No books yet", the line "Share an EPUB, AZW3, PDF, or TXT file from any app. It arrives the next time your Kindle wakes", and a "Choose a file" button.
 
 **Share sheet.** The app opens as a bottom sheet over the app you shared from.
 - It shows the cover, title, author, and "EPUB · 9.1 MB", with **Send to Kindle** as the primary action and **Cancel** as a text button.
@@ -59,7 +59,7 @@ The mockups are in [mockups.html](mockups.html). Open it in a browser.
 
 **Book** (detail).
 - The cover, title, and author are centered at the top.
-- A four-step timeline follows: Converted (size and time), Uploaded (time), Waiting for Kindle ("Arrives the next time your Kindle wakes"), and On Kindle.
+- A four-step timeline follows: Converted (size and time), Uploaded (time), Waiting for Kindle ("Arrives the next time your Kindle wakes"), and On Kindle. Only an EPUB is converted, so an AZW3, PDF, or TXT file starts at Uploaded.
 - The one action is "Cancel sending" while the book is waiting. For a failure, show the error copy and "Try again".
 
 **First run** (Connect your Kindle).
@@ -80,7 +80,7 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 | Situation | Copy |
 |---|---|
 | Conversion failed | Couldn't convert this book. Try another copy of the file. |
-| Unsupported file | Kindle Drop sends EPUB and PDF files. |
+| Unsupported file | Kindle Drop sends EPUB, AZW3, PDF, and TXT files. |
 | Upload failed, offline | Couldn't upload. Kindle Drop retries when you're back online. |
 | Upload failed, server | Couldn't upload. Try again in a few minutes. |
 | Pairing code unreadable | This isn't a Kindle Drop pairing code. |
