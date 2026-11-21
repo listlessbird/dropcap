@@ -22,7 +22,8 @@ const uniffiIsDebug =
 /**
  * Convert `epub_path` into an EBOK AZW3 and its device thumbnail, both written to `out_dir`.
  * A Promise in TypeScript: the CPU-bound work (seconds for a large book) runs on its own thread,
- * never on the JS thread.
+ * never on the JS thread. Aborting the Promise stops the work at the next stage boundary and
+ * removes what it wrote; kindling's build itself cannot be interrupted.
  */
 export async function convertEpub(epubPath: string, outDir: string, asyncOpts_?: { signal: AbortSignal }): Promise<Converted> /*throws*/ {
     const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -48,6 +49,50 @@ export async function convertEpub(epubPath: string, outDir: string, asyncOpts_?:
             /*liftFunc:*/ (__rb) => {
                 try {
                     return FfiConverterTypeConverted.lift(__rb);
+                } finally {
+                    nativeModule().rustbuffer_free(__rb);
+                }
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+            /*asyncOpts:*/ asyncOpts_,
+            /*errorHandler:*/ FfiConverterTypeConvertError.lift.bind(FfiConverterTypeConvertError)
+        );
+    } catch (__error: any) {
+        if (uniffiIsDebug && __error instanceof Error) {
+            __error.stack = __stack;
+        }
+        throw __error;
+    }
+    }
+
+/**
+ * Write the device thumbnail of an existing AZW3 (one with EXTH 113 + 501, as EBOK books have)
+ * into `out_dir`, named the way the firmware expects.
+ */
+export async function deviceThumbnail(azw3Path: string, outDir: string, asyncOpts_?: { signal: AbortSignal }): Promise<Thumbnail> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+        return await uniffiRustCallAsync(
+            /*rustCaller:*/ uniffiCaller,
+            /*rustFutureFunc:*/ () => {
+                return nativeModule().ubrn_uniffi_kindle_core_fn_func_device_thumbnail(FfiConverterString.lower(azw3Path, nativeModule().rustbuffer_alloc),FfiConverterString.lower(outDir, nativeModule().rustbuffer_alloc)
+                );
+            },
+            /*pollFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_poll_rust_buffer,
+            /*cancelFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_cancel_rust_buffer,
+            /*completeFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_complete_rust_buffer,
+            /*freeFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_free_rust_buffer,
+            // Async returns always go through the JS-side converter: the
+            // FFI symbol returns the future handle (u64), and the user-level
+            // RustBuffer comes back via the shared `rust_future_complete_*`
+            // export. The bytes the runtime hands back must be deserialized
+            // here using the per-callable return-type converter.
+            // Borrowed view over foreign memory: the call site owns the free,
+            // as on the sync paths. Unconditional — a no-op where buffers are
+            // already JS-owned.
+            /*liftFunc:*/ (__rb) => {
+                try {
+                    return FfiConverterTypeThumbnail.lift(__rb);
                 } finally {
                     nativeModule().rustbuffer_free(__rb);
                 }
@@ -171,6 +216,52 @@ const FfiConverterTypeConverted = (() => {
              FfiConverterString.allocationSize(value.thumbnailPath) +
              FfiConverterString.allocationSize(value.title) +
              FfiConverterString.allocationSize(value.author);
+            
+        }
+    };
+    return new FFIConverter();
+})();
+
+export type Thumbnail = {
+    /**
+     * `thumbnail_<asin>_<cde_type>_portrait.jpg`, the name the firmware looks for.
+     */
+    name: string,
+    path: string
+}
+
+/**
+ * Generated factory for {@link Thumbnail} record objects.
+ */
+export const Thumbnail = (() => {
+    const defaults = () => ({
+    });
+    const create = (() => {
+        return uniffiCreateRecord<Thumbnail, ReturnType<typeof defaults>>(defaults);
+    })();
+    return Object.freeze({
+        create,
+        new: create,
+        defaults: () => Object.freeze(defaults()) as Partial<Thumbnail>,
+    });
+})();
+
+const FfiConverterTypeThumbnail = (() => {
+    type TypeName = Thumbnail;
+    class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+        readFromCursor(c: Cursor): TypeName {
+            return {
+                name: FfiConverterString.readFromCursor(c), 
+                path: FfiConverterString.readFromCursor(c)
+            };
+        }
+        writeIntoCursor(value: TypeName, c: Cursor): void {
+            FfiConverterString.writeIntoCursor(value.name, c);
+            FfiConverterString.writeIntoCursor(value.path, c);
+        }
+        allocationSize(value: TypeName): number {
+            return FfiConverterString.allocationSize(value.name) +
+             FfiConverterString.allocationSize(value.path);
             
         }
     };
@@ -472,8 +563,11 @@ function uniffiEnsureInitialized() {
     if (bindingsContractVersion !== scaffoldingContractVersion) {
         throw new UniffiInternalError.ContractVersionMismatch(scaffoldingContractVersion, bindingsContractVersion);
     }
-    if (nativeModule().ubrn_uniffi_kindle_core_checksum_func_convert_epub() !== 53140) {
+    if (nativeModule().ubrn_uniffi_kindle_core_checksum_func_convert_epub() !== 13316) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_kindle_core_checksum_func_convert_epub");
+    }
+    if (nativeModule().ubrn_uniffi_kindle_core_checksum_func_device_thumbnail() !== 27975) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_kindle_core_checksum_func_device_thumbnail");
     }
 
     }
@@ -483,5 +577,6 @@ export default Object.freeze({
   converters: {
     FfiConverterTypeConvertError,
     FfiConverterTypeConverted,
+    FfiConverterTypeThumbnail,
   }
 });

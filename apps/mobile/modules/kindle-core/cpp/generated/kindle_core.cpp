@@ -133,6 +133,10 @@ extern "C" {
         RustBuffer epub_path, 
         RustBuffer out_dir
     );
+    /*handle*/ uint64_t uniffi_kindle_core_fn_func_device_thumbnail(
+        RustBuffer azw3_path, 
+        RustBuffer out_dir
+    );
     RustBuffer ffi_kindle_core_rustbuffer_alloc(
         uint64_t size, 
         RustCallStatus *uniffi_out_err
@@ -331,6 +335,8 @@ extern "C" {
         RustCallStatus *uniffi_out_err
     );
     uint16_t uniffi_kindle_core_checksum_func_convert_epub(
+    );
+    uint16_t uniffi_kindle_core_checksum_func_device_thumbnail(
     );
     uint32_t ffi_kindle_core_uniffi_contract_version(
     );
@@ -1840,6 +1846,14 @@ NativeKindleCore::NativeKindleCore(
             return this->cpp_uniffi_kindle_core_fn_func_convert_epub(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_kindle_core_fn_func_device_thumbnail"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_kindle_core_fn_func_device_thumbnail"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_kindle_core_fn_func_device_thumbnail(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_ffi_kindle_core_rust_future_poll_u8"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_ffi_kindle_core_rust_future_poll_u8"),
@@ -2232,6 +2246,14 @@ NativeKindleCore::NativeKindleCore(
             return this->cpp_uniffi_kindle_core_checksum_func_convert_epub(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_kindle_core_checksum_func_device_thumbnail"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_kindle_core_checksum_func_device_thumbnail"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_kindle_core_checksum_func_device_thumbnail(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_ffi_kindle_core_uniffi_contract_version"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_ffi_kindle_core_uniffi_contract_version"),
@@ -2398,6 +2420,13 @@ jsi::Value NativeKindleCore::cpp_uniffi_internal_fn_func_ffi__read_string_from_b
 // Methods calling directly into the uniffi generated C API of the Rust crate.
 jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_fn_func_convert_epub(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_kindle_core_fn_func_convert_epub(uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_fn_func_device_thumbnail(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_kindle_core_fn_func_device_thumbnail(uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
         );
 
         
@@ -2777,6 +2806,13 @@ jsi::Value NativeKindleCore::cpp_ffi_kindle_core_rust_future_complete_void(jsi::
 }
 jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_checksum_func_convert_epub(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_kindle_core_checksum_func_convert_epub(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_checksum_func_device_thumbnail(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_kindle_core_checksum_func_device_thumbnail(
         );
 
         

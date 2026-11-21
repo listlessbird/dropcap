@@ -1019,10 +1019,12 @@ name = "kindle-core"
 version = "0.1.0"
 dependencies = [
  "futures-channel",
+ "image",
  "kindling-mobi",
  "pollster",
  "thiserror",
  "uniffi",
+ "zip",
 ]
 
 [[package]]
