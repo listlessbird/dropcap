@@ -13,7 +13,7 @@ import { AppText } from "../../components/ui/AppText";
 import { BottomSheet, type BottomSheetRef } from "../../components/ui/BottomSheet";
 import { Button } from "../../components/ui/Button";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
-import { megabytes } from "../../lib/units";
+import { fileSize } from "../../lib/units";
 import { booksState } from "../../state/books";
 import { appAtomRegistry } from "../../state/atom-registry";
 import { BookCover } from "../library/BookCover";
@@ -54,7 +54,7 @@ function Summary(props: {
 const detailOf = (format: Option.Option<BookFormat>, bytes: Option.Option<number>) =>
   [
     ...Option.toArray(Option.map(format, (f) => FORMAT_LABEL[f])),
-    ...Option.toArray(Option.map(bytes, megabytes)),
+    ...Option.toArray(Option.map(bytes, fileSize)),
   ].join(" · ");
 
 function Message(props: {
