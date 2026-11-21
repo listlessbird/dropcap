@@ -15,7 +15,8 @@
     "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/export-icons.mts",
     "test": "vp test run",
     "typecheck": "tsc --noEmit",
-    "generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-uniwind-themes.mts"
+    "generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-uniwind-themes.mts",
+    "eas-build-pre-install": "bash scripts/eas-install-rust.sh"
   },
   "dependencies": {
     "@effect/atom-react": "catalog:",
