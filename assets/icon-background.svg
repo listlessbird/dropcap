@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f1033"/>
+      <stop offset=".55" stop-color="#2b2263"/>
+      <stop offset=".78" stop-color="#6b3f7a"/>
+      <stop offset="1" stop-color="#c7786e"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="56" cy="46" r="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe9c4" stop-opacity=".55"/>
+      <stop offset=".45" stop-color="#f3c7a0" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#f3c7a0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="108" height="108" fill="url(#sky)"/>
+  <circle cx="56" cy="46" r="36" fill="url(#halo)"/>
+  <g fill="#ffffff" opacity=".8">
+    <circle cx="30" cy="30" r=".7"/>
+    <circle cx="78" cy="26" r=".5"/>
+    <circle cx="38" cy="58" r=".45"/>
+    <circle cx="84" cy="52" r=".6"/>
+  </g>
+</svg>
