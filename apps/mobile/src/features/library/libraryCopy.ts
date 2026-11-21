@@ -4,13 +4,21 @@ import * as Option from "effect/Option";
 
 import type { MailboxErrorReason } from "../../lib/mailboxClient";
 import { relativeTime } from "../../lib/relativeTime";
-import { BookStatus, type Book, type UploadFailure } from "../sending/book";
+import { BookStatus, type Book, type ConvertFailure, type UploadFailure } from "../sending/book";
 
 export const UNSUPPORTED_FILE = "Dropcap sends EPUB, AZW3, PDF, and TXT files.";
+
+export const UNSUPPORTED_TEXT =
+  "This text has no link to an article. Share the page from your browser.";
 
 export const FILE_UNREADABLE = "Couldn't open this file. Try sharing it again.";
 
 const CONVERT_FAILED = "Couldn't convert this book. Try another copy of the file.";
+
+const ARTICLE_FAILED: Readonly<Record<ConvertFailure, string>> = {
+  unreachable: "Couldn't load this article. Sending resumes when you're back online.",
+  invalid: "Couldn't find an article on this page. Try another link.",
+};
 
 const UPLOAD_FAILED: Readonly<Record<UploadFailure, string>> = {
   unreachable: "Couldn't upload. Dropcap retries when you're back online.",
@@ -25,14 +33,21 @@ export const CANCEL_FAILED: Readonly<Record<MailboxErrorReason, string>> = {
   unauthorized: "This pairing code no longer works. Create a new one on your computer.",
 };
 
-export const FORMAT_LABEL = { epub: "EPUB", azw3: "AZW3", pdf: "PDF", txt: "TXT" } as const;
+export const FORMAT_LABEL = {
+  epub: "EPUB",
+  azw3: "AZW3",
+  pdf: "PDF",
+  txt: "TXT",
+  article: "Article",
+} as const;
 
 /** What went wrong, in the catalog's words, for a failed book. */
-export const failureOf = (status: BookStatus) =>
+export const failureOf = ({ source, status }: Book) =>
   BookStatus.matchOrElse(
     status,
     {
-      ConvertFailed: () => Option.some(CONVERT_FAILED),
+      ConvertFailed: ({ reason }) =>
+        Option.some(source.format === "article" ? ARTICLE_FAILED[reason] : CONVERT_FAILED),
       UploadFailed: ({ reason }) => Option.some(UPLOAD_FAILED[reason]),
     },
     () => Option.none<string>(),

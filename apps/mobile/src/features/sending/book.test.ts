@@ -6,6 +6,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import {
+  articleUrlOf,
   Book,
   BookEvent,
   BookId,
@@ -103,18 +104,30 @@ describe("transition", () => {
       Uploading.make({ converted, uploaded: [thumbnailKey] }),
     );
     assert.deepStrictEqual(
-      run(ConvertFailed.make({ confirmed: true }), BookEvent.Retried()),
+      run(ConvertFailed.make({ confirmed: true, reason: "invalid" }), BookEvent.Retried()),
       Converting.make({ confirmed: true }),
     );
   });
 
   it("remembers whether the user sent a book whose conversion failed", () => {
-    const sent = run(Converting.make({ confirmed: true }), BookEvent.ConvertFailed());
-    const unsent = run(Converting.make({ confirmed: false }), BookEvent.ConvertFailed());
+    const failed = BookEvent.ConvertFailed({ reason: "invalid" });
+    const sent = run(Converting.make({ confirmed: true }), failed);
+    const unsent = run(Converting.make({ confirmed: false }), failed);
 
-    assert.deepStrictEqual(sent, ConvertFailed.make({ confirmed: true }));
+    assert.deepStrictEqual(sent, ConvertFailed.make({ confirmed: true, reason: "invalid" }));
     assert.isFalse(isUnconfirmed(sent));
     assert.isTrue(isUnconfirmed(unsent));
+  });
+
+  it("sends an article that could not be fetched offline once the user sends it", () => {
+    const offline = run(
+      Converting.make({ confirmed: false }),
+      BookEvent.ConvertFailed({ reason: "unreachable" }),
+      BookEvent.Confirmed(),
+    );
+
+    assert.deepStrictEqual(offline, ConvertFailed.make({ confirmed: true, reason: "unreachable" }));
+    assert.isFalse(isUnconfirmed(offline));
   });
 
   it("ignores events that do not apply to the current status", () => {
@@ -243,14 +256,51 @@ describe("item names", () => {
   });
 });
 
+describe("articleUrlOf", () => {
+  it("finds the link in text a browser or app shared", () => {
+    for (const [text, expected] of [
+      ["https://example.com/2026/11/flood-season", "https://example.com/2026/11/flood-season"],
+      ["Flood Season https://example.com/story?id=4#top", "https://example.com/story?id=4#top"],
+      ["Read this (https://example.com/story).", "https://example.com/story"],
+      ["  http://example.com\n", "http://example.com"],
+      ["Meet at the river at 6", undefined],
+      ["ftp://example.com/file", undefined],
+    ] as const) {
+      assert.deepStrictEqual(articleUrlOf(text), Option.fromNullishOr(expected), text);
+    }
+  });
+});
+
+const codec = Schema.fromJsonString(Book);
+
+const encodeBook = Schema.encodeSync(Book);
+
 describe("Book", () => {
   it("survives the round trip through storage", () => {
-    const codec = Schema.fromJsonString(Book);
-    const stored = bookWith(waiting);
+    const article: Book = {
+      ...bookWith(ConvertFailed.make({ confirmed: true, reason: "unreachable" })),
+      source: { name: "Flood Season", format: "article", url: "https://example.com/story" },
+    };
 
+    for (const stored of [bookWith(waiting), article]) {
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(codec)(Schema.encodeSync(codec)(stored)),
+        stored,
+      );
+    }
+  });
+
+  it("reads a failed conversion stored before failures had a reason", () => {
+    const failed = encodeBook(
+      bookWith(ConvertFailed.make({ confirmed: true, reason: "unreachable" })),
+    );
+
+    const stored = JSON.stringify(failed).replace(',"reason":"unreachable"', "");
+
+    assert.notInclude(stored, "reason");
     assert.deepStrictEqual(
-      Schema.decodeUnknownSync(codec)(Schema.encodeSync(codec)(stored)),
-      stored,
+      Schema.decodeUnknownSync(codec)(stored).status,
+      ConvertFailed.make({ confirmed: true, reason: "invalid" }),
     );
   });
 });

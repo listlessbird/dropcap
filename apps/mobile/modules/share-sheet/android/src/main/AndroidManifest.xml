@@ -16,7 +16,7 @@
         <data android:mimeType="application/vnd.amazon.mobi8-ebook" />
         <data android:mimeType="application/x-mobi8-ebook" />
         <data android:mimeType="application/pdf" />
-        <!-- Also matches shared text with no file, which the sheet turns away as unsupported. -->
+        <!-- Also matches shared text with no file: a link to an article, or text the sheet turns away. -->
         <data android:mimeType="text/plain" />
         <!-- Many apps share an EPUB or AZW3 without knowing its type. -->
         <data android:mimeType="application/octet-stream" />

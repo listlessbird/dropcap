@@ -18,6 +18,7 @@ const sender = Layer.succeed(
     books: Stream.make([]),
     progress: Stream.make(new Map()),
     add: () => Effect.die("unused"),
+    addArticle: () => Effect.die("unused"),
     confirm: () => Effect.void,
     discard: () => Effect.void,
     cancelSending: (id) => (id === "a" ? Effect.fail(offline) : Effect.void),

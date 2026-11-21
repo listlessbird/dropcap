@@ -10,7 +10,7 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 /**
- * Receives one shared file and renders the JS `share` root over the app that shared it. It runs in
+ * Receives one shared file, or shared text such as a browser's link to a page, and renders the JS `share` root over the app that shared it. It runs in
  * the sender's task, so finishing it returns there. It skips Expo's ReactActivityDelegateWrapper on
  * purpose: the dev launcher would adopt it as the app's main activity.
  */
@@ -29,10 +29,11 @@ class ShareActivity : ReactActivity() {
     finish()
   }
 
-  // `uri`, `mimeType`, `name` and `bytes`, each only when the sender provides it.
+  // `uri`, `mimeType`, `name` and `bytes` for a file, or `text` and `subject` for shared text, each
+  // only when the sender provides it.
   private fun sharedFile(intent: Intent): Bundle {
     val props = Bundle()
-    val uri = streamOf(intent) ?: return props
+    val uri = streamOf(intent) ?: return sharedText(intent, props)
 
     props.putString("uri", uri.toString())
     (intent.type ?: contentResolver.getType(uri))?.let { props.putString("mimeType", it) }
@@ -47,6 +48,12 @@ class ShareActivity : ReactActivity() {
       }
     }
 
+    return props
+  }
+
+  private fun sharedText(intent: Intent, props: Bundle): Bundle {
+    intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.let { props.putString("text", it.toString()) }
+    intent.getStringExtra(Intent.EXTRA_SUBJECT)?.let { props.putString("subject", it) }
     return props
   }
 

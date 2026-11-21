@@ -113,7 +113,7 @@ export function BookScreen({ route }: StaticScreenProps<{ readonly id: string }>
   );
 
   const steps = timelineOf(shown, uploadProgress, now);
-  const failure = failureOf(shown.status);
+  const failure = failureOf(shown);
 
   const cancelError = AsyncResult.matchWithError(canceled, {
     onInitial: () => undefined,
