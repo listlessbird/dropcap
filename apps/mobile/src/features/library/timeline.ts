@@ -2,7 +2,7 @@ import type * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 
 import { dayAndTime } from "../../lib/relativeTime";
-import { megabytes, seconds } from "../../lib/units";
+import { fileSize, seconds } from "../../lib/units";
 import { BookStatus, convertedOf, isConvertible, uploadedAt, type Book } from "../sending/book";
 
 export type StepState = "done" | "now" | "next" | "failed";
@@ -25,7 +25,7 @@ export const timelineOf = (
   now: DateTime.Utc,
 ): ReadonlyArray<Step> => {
   const converted = Option.map(convertedOf(book.status), (c) =>
-    [megabytes(c.bookBytes), ...Option.toArray(Option.map(c.convertedIn, seconds))].join(" · "),
+    [fileSize(c.bookBytes), ...Option.toArray(Option.map(c.convertedIn, seconds))].join(" · "),
   );
 
   const step = (label: string, state: StepState, detail?: string): Step => ({
