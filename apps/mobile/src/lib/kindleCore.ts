@@ -6,24 +6,31 @@ import * as Schema from "effect/Schema";
 
 export type Converted = Native.Converted;
 
+export type Thumbnail = Native.Thumbnail;
+
 export class ConvertError extends Schema.TaggedError<ConvertError>()("ConvertError", {
   stage: Schema.Literals(["Epub", "Build", "Thumbnail", "Io"]),
   message: Schema.String,
 }) {}
 
-/** The Rust EPUB converter in modules/kindle-core. */
+/** The Rust EPUB converter in modules/kindle-core. Paths are file system paths, not `file://` URIs. */
 export class KindleCore extends Context.Service<
   KindleCore,
   {
     /**
-     * Writes an EBOK `.azw3` and its Kindle thumbnail into `outDir`. Both arguments are file system
-     * paths, not `file://` URIs. Interrupting cancels the Rust future at once, but kindling cannot
-     * be stopped mid-book: its thread finishes in the background and may still write `outDir`.
+     * Writes an EBOK `.azw3` and its Kindle thumbnail into `outDir`. Interrupting stops the Rust
+     * work at its next stage boundary and removes what it wrote. kindling's build, most of a
+     * conversion, cannot be stopped midway, so that much may still run in the background.
      */
     readonly convertEpub: (
       epubPath: string,
       outDir: string,
     ) => Effect.Effect<Converted, ConvertError>;
+    /** Writes the Kindle thumbnail of an existing EBOK `.azw3` into `outDir`. */
+    readonly deviceThumbnail: (
+      azw3Path: string,
+      outDir: string,
+    ) => Effect.Effect<Thumbnail, ConvertError>;
   }
 >()("@kindle-drop/mobile/lib/KindleCore") {}
 
@@ -31,23 +38,31 @@ export const make = Effect.gen(function* () {
   // Imported lazily: loading the module installs the Rust crate, which Node tests cannot do.
   const native = yield* Effect.promise(() => import("@kindle-drop/kindle-core"));
 
-  const convertEpub = Effect.fn("KindleCore.convertEpub")(function* (
-    epubPath: string,
-    outDir: string,
-  ) {
-    return yield* Effect.tryPromise({
-      try: (signal) => native.convertEpub(epubPath, outDir, { signal }),
-      catch: (cause) => cause,
-    }).pipe(
+  // The AbortSignal makes interruption drop the Rust future, which the Rust side checks for.
+  const call = <A>(run: (signal: AbortSignal) => Promise<A>) =>
+    Effect.tryPromise({ try: run, catch: (cause) => cause }).pipe(
       Effect.catch((cause) =>
         native.ConvertError.instanceOf(cause)
           ? Effect.fail(new ConvertError({ stage: cause.tag, message: cause.inner[0] }))
           : Effect.die(cause),
       ),
     );
+
+  const convertEpub = Effect.fn("KindleCore.convertEpub")(function* (
+    epubPath: string,
+    outDir: string,
+  ) {
+    return yield* call((signal) => native.convertEpub(epubPath, outDir, { signal }));
   });
 
-  return KindleCore.of({ convertEpub });
+  const deviceThumbnail = Effect.fn("KindleCore.deviceThumbnail")(function* (
+    azw3Path: string,
+    outDir: string,
+  ) {
+    return yield* call((signal) => native.deviceThumbnail(azw3Path, outDir, { signal }));
+  });
+
+  return KindleCore.of({ convertEpub, deviceThumbnail });
 });
 
 export const layer = Layer.effect(KindleCore, make);
