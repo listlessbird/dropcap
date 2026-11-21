@@ -65,6 +65,8 @@ class ShareActivity : ReactActivity() {
       intent.getParcelableExtra(Intent.EXTRA_STREAM)
     }
 
-    return stream ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
+    // A browser sharing a link puts its preview thumbnail in clipData, so that is not the shared file.
+    if (stream != null || intent.hasExtra(Intent.EXTRA_TEXT)) return stream
+    return intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
   }
 }
