@@ -13,7 +13,7 @@ import {
   formatOf,
   isUnconfirmed,
   leftInMailbox,
-  pdfItemName,
+  itemNameOf,
   transition,
   type Converted,
 } from "./book";
@@ -203,15 +203,18 @@ describe("leftInMailbox", () => {
 describe("item names", () => {
   const decodeName = Schema.decodeUnknownOption(ItemName);
 
-  it("makes a PDF's name safe for the Kindle's listing and file system", () => {
-    for (const [shared, expected] of [
-      ["Gardens of the Moon.pdf", "Gardens of the Moon.pdf"],
-      ["Tab\tand\nnewline.PDF", "Tab_and_newline.pdf"],
-      ["a/b\\c:d.pdf", "a_b_c_d.pdf"],
-      ["  .pdf", "untitled.pdf"],
-      ["no extension", "no extension.pdf"],
+  it("makes a shared file's name safe for the Kindle's listing and file system", () => {
+    for (const [shared, format, expected] of [
+      ["Gardens of the Moon.pdf", "pdf", "Gardens of the Moon.pdf"],
+      ["Tab\tand\nnewline.PDF", "pdf", "Tab_and_newline.pdf"],
+      ["a/b\\c:d.pdf", "pdf", "a_b_c_d.pdf"],
+      ["  .pdf", "pdf", "untitled.pdf"],
+      ["no extension", "pdf", "no extension.pdf"],
+      ["Dune.AZW3", "azw3", "Dune.azw3"],
+      ["notes.txt", "txt", "notes.txt"],
+      ["shared as text", "txt", "shared as text.txt"],
     ] as const) {
-      const name = pdfItemName(shared);
+      const name = itemNameOf(shared, format);
 
       assert.strictEqual<string>(name, expected);
       assert.isTrue(Option.isSome(decodeName(name)));
@@ -219,19 +222,24 @@ describe("item names", () => {
   });
 
   it("knows a book by its type, or by its name when the sender does not know the type", () => {
-    assert.deepStrictEqual(
-      formatOf("book", Option.some("application/epub+zip")),
-      Option.some("epub"),
-    );
-    assert.deepStrictEqual(
-      formatOf("Dune.EPUB", Option.some("application/octet-stream")),
-      Option.some("epub"),
-    );
-    assert.deepStrictEqual(formatOf("Dune.pdf", Option.none()), Option.some("pdf"));
-    assert.deepStrictEqual(
-      formatOf("Dune.mobi", Option.some("application/octet-stream")),
-      Option.none(),
-    );
+    for (const [name, type, expected] of [
+      ["book", "application/epub+zip", "epub"],
+      ["Dune.EPUB", "application/octet-stream", "epub"],
+      ["Dune.pdf", undefined, "pdf"],
+      ["book", "application/vnd.amazon.mobi8-ebook", "azw3"],
+      ["book", "application/x-mobi8-ebook", "azw3"],
+      ["Dune.azw3", "application/octet-stream", "azw3"],
+      ["notes", "text/plain", "txt"],
+      ["notes.TXT", undefined, "txt"],
+      ["Dune.mobi", "application/octet-stream", undefined],
+      ["Dune.azw", "application/octet-stream", undefined],
+    ] as const) {
+      assert.deepStrictEqual(
+        formatOf(name, Option.fromNullishOr(type)),
+        Option.fromNullishOr(expected),
+        name,
+      );
+    }
   });
 });
 

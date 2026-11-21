@@ -55,8 +55,15 @@ const epub = {
   mimeType: Option.some("application/epub+zip"),
 };
 
+const azw3 = {
+  uri: "content://downloads/2",
+  name: "House of Chains - Steven Erikson.azw3",
+  mimeType: Option.some("application/octet-stream"),
+};
+
 interface Overrides {
   readonly convertEpub?: KindleCore["Service"]["convertEpub"];
+  readonly deviceThumbnail?: KindleCore["Service"]["deviceThumbnail"];
   /** Whether the book files on this phone are gone, as after the user cleared app storage. */
   readonly filesMissing?: boolean;
   /** Stored rows this version of the app cannot read. */
@@ -147,7 +154,9 @@ const world = (
               title: "House of Chains",
               author: "Steven Erikson",
             })),
-        deviceThumbnail: () => Effect.die(new Error("The sender never reads AZW3 thumbnails.")),
+        deviceThumbnail:
+          overrides.deviceThumbnail ??
+          ((_, outDir) => Effect.succeed({ name: THUMBNAIL, path: `${outDir}/${THUMBNAIL}` })),
       }),
     );
 
@@ -343,6 +352,58 @@ describe("Sender", () => {
     }),
   );
 
+  it.effect("sends an AZW3 as it is, with the cover it carries first", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], {
+        convertEpub: () => Effect.die(new Error("An AZW3 is never converted.")),
+      });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(azw3, true);
+
+        yield* until(id, "Waiting");
+
+        assert.deepStrictEqual(yield* Ref.get(phone.uploads), [THUMBNAIL, BOOK]);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("sends an AZW3 without a cover when it carries none", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], {
+        deviceThumbnail: () =>
+          Effect.fail(new ConvertError({ stage: "Thumbnail", message: "no ASIN" })),
+      });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.add(azw3, true);
+
+        yield* until(id, "Waiting");
+
+        assert.deepStrictEqual(yield* Ref.get(phone.uploads), [BOOK]);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("sends a text file as it is", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], {
+        convertEpub: () => Effect.die(new Error("A text file is never converted.")),
+      });
+
+      yield* Effect.gen(function* () {
+        const txt = { uri: "content://x", name: "notes.txt", mimeType: Option.some("text/plain") };
+        const id = yield* Sender.use((sender) => sender.add(txt, true));
+
+        yield* until(id, "Waiting");
+
+        assert.deepStrictEqual(yield* Ref.get(phone.uploads), ["notes.txt"]);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
   it.effect("waits at Ready for Send, then uploads", () =>
     Effect.gen(function* () {
       const phone = yield* world([]);
@@ -408,7 +469,7 @@ describe("Sender", () => {
       const error = yield* Effect.flip(
         Sender.use((sender) =>
           sender.add(
-            { uri: "content://x", name: "notes.txt", mimeType: Option.some("text/plain") },
+            { uri: "content://x", name: "notes.docx", mimeType: Option.some("application/msword") },
             true,
           ),
         ).pipe(Effect.provide(phone.layer)),
