@@ -147,6 +147,7 @@ const world = (
               title: "House of Chains",
               author: "Steven Erikson",
             })),
+        deviceThumbnail: () => Effect.die(new Error("The sender never reads AZW3 thumbnails.")),
       }),
     );
 
