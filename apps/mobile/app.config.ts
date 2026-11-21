@@ -4,35 +4,46 @@ const APP_VARIANTS = ["development", "preview", "production"] as const;
 
 type AppVariant = (typeof APP_VARIANTS)[number];
 
+type AdaptiveIcon = NonNullable<NonNullable<ExpoConfig["android"]>["adaptiveIcon"]>;
+
 interface VariantConfig {
   readonly appName: string;
   readonly scheme: string;
   readonly androidPackage: string;
   readonly icon: string;
-  readonly adaptiveBackground: string;
+  readonly adaptiveIcon: AdaptiveIcon;
 }
+
+// Dev and preview wear the flat mark on their own color so they never pass for the real install.
+const flatAdaptiveIcon = (backgroundColor: string): AdaptiveIcon => ({
+  foregroundImage: "./assets/android-icon-mark.png",
+  backgroundColor,
+});
 
 const VARIANT_CONFIG = {
   development: {
-    appName: "Kindle Drop Dev",
+    appName: "Dropcap Dev",
     scheme: "kindledrop-dev",
     androidPackage: "com.listlessbird.kindledrop.dev",
     icon: "./assets/icon-development.png",
-    adaptiveBackground: "#d97706",
+    adaptiveIcon: flatAdaptiveIcon("#d97706"),
   },
   preview: {
-    appName: "Kindle Drop Preview",
+    appName: "Dropcap Preview",
     scheme: "kindledrop-preview",
     androidPackage: "com.listlessbird.kindledrop.preview",
     icon: "./assets/icon-preview.png",
-    adaptiveBackground: "#7c3aed",
+    adaptiveIcon: flatAdaptiveIcon("#7c3aed"),
   },
   production: {
-    appName: "Kindle Drop",
+    appName: "Dropcap",
     scheme: "kindledrop",
     androidPackage: "com.listlessbird.kindledrop",
     icon: "./assets/icon-production.png",
-    adaptiveBackground: "#0891b2",
+    adaptiveIcon: {
+      foregroundImage: "./assets/android-icon-foreground.png",
+      backgroundImage: "./assets/android-icon-background.png",
+    },
   },
 } satisfies Record<AppVariant, VariantConfig>;
 
@@ -75,11 +86,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: variant.androidPackage,
-    adaptiveIcon: {
-      foregroundImage: "./assets/android-icon-foreground.png",
-      monochromeImage: "./assets/android-icon-foreground.png",
-      backgroundColor: variant.adaptiveBackground,
-    },
+    adaptiveIcon: { ...variant.adaptiveIcon, monochromeImage: "./assets/android-icon-mark.png" },
     // JS back dispatch on Android 13-15 also needs withAndroidPredictiveBackCompat.
     predictiveBackGestureEnabled: true,
   },
@@ -107,10 +114,10 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       {
+        // The moon only reads on the night sky, so the splash stays dark in both themes.
         image: "./assets/android-icon-foreground.png",
         imageWidth: 288,
-        backgroundColor: "#ffffff",
-        dark: { backgroundColor: "#0a0a0a" },
+        backgroundColor: "#15143a",
       },
     ],
     [
