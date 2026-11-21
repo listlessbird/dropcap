@@ -41,7 +41,7 @@ const pair = Command.make(
 
     return Console.log(`${renderUnicodeCompact(link, { border: 2 })}\n\n${link}`);
   },
-).pipe(Command.withDescription("Print the pairing code for the Kindle Drop app."));
+).pipe(Command.withDescription("Print the pairing code for the Dropcap app."));
 
 const secrets = ConfigProvider.layer(
   ConfigProvider.fromDotEnv({ path: secretsFile }).pipe(

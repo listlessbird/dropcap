@@ -37,7 +37,7 @@ export function pairingErrorMessage(
     onSuccess: () => undefined,
     onDefect: () => COULD_NOT_CONNECT,
     onError: Match.valueTags({
-      PairingCodeUnreadable: () => "This isn't a Kindle Drop pairing code.",
+      PairingCodeUnreadable: () => "This isn't a Dropcap pairing code.",
       ServerAddressInvalid: () => "Enter the full server address, such as https://example.com",
       MailboxError: (error) => MAILBOX_COPY[source][error.reason],
       ConnectionStoreError: () => COULD_NOT_SAVE,

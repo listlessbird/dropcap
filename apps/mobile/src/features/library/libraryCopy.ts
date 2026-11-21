@@ -6,14 +6,14 @@ import type { MailboxErrorReason } from "../../lib/mailboxClient";
 import { relativeTime } from "../../lib/relativeTime";
 import { BookStatus, type Book, type UploadFailure } from "../sending/book";
 
-export const UNSUPPORTED_FILE = "Kindle Drop sends EPUB, AZW3, PDF, and TXT files.";
+export const UNSUPPORTED_FILE = "Dropcap sends EPUB, AZW3, PDF, and TXT files.";
 
 export const FILE_UNREADABLE = "Couldn't open this file. Try sharing it again.";
 
 const CONVERT_FAILED = "Couldn't convert this book. Try another copy of the file.";
 
 const UPLOAD_FAILED: Readonly<Record<UploadFailure, string>> = {
-  unreachable: "Couldn't upload. Kindle Drop retries when you're back online.",
+  unreachable: "Couldn't upload. Dropcap retries when you're back online.",
   unexpected: "Couldn't upload. Try again in a few minutes.",
   unauthorized: "This pairing code no longer works. Create a new one on your computer.",
   missing: "Couldn't find this book's file. Share it again.",

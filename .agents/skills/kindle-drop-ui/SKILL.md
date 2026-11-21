@@ -5,9 +5,15 @@ description: kindle-drop's product design and UI writing guide, covering the agr
 
 # kindle-drop UI
 
-Kindle Drop sends books from the user's phone to their Kindle. The interface should feel like a well-made system app: calm, quiet, and professional. Every word earns its place.
+Dropcap sends books from the user's phone to their Kindle. The interface should feel like a well-made system app: calm, quiet, and professional. Every word earns its place.
 
 The design below was researched and agreed with the user on 2026-10-28. Build what it describes. Treat any change to a flow or to a term in the vocabulary as a product decision, and ask the user first.
+
+## Brand
+
+- The app is **Dropcap**: one word, capital D only. "Kindle" names the device and nothing else, because the app must not borrow Amazon's mark. The package id and `kindledrop://` scheme keep the old name, since the installed app depends on them.
+- The icon is a first-quarter moon over water, and the moon is the D. Its reflection breaks into lines of text. Production shows the full night-sky art. Dev, preview, and the themed icon use the flat mark (`assets/icon-mark.svg`).
+- The layers live in `assets/icon-*.svg` on a shared 108 dp canvas. After editing one, run `pnpm vp run --filter @kindle-drop/mobile icons`. The icon is part of the native fingerprint, so a change needs a native build.
 
 ## Writing rules
 
@@ -80,15 +86,15 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 | Situation | Copy |
 |---|---|
 | Conversion failed | Couldn't convert this book. Try another copy of the file. |
-| Unsupported file | Kindle Drop sends EPUB, AZW3, PDF, and TXT files. |
-| Upload failed, offline | Couldn't upload. Kindle Drop retries when you're back online. |
+| Unsupported file | Dropcap sends EPUB, AZW3, PDF, and TXT files. |
+| Upload failed, offline | Couldn't upload. Dropcap retries when you're back online. |
 | Upload failed, server | Couldn't upload. Try again in a few minutes. |
-| Pairing code unreadable | This isn't a Kindle Drop pairing code. |
+| Pairing code unreadable | This isn't a Dropcap pairing code. |
 | Pairing rejected | This pairing code no longer works. Create a new one on your computer. |
 | Kindle quiet for days | Kindle hasn't checked in for 3 days. Wake it to receive books. |
 | Disconnect dialog | Title "Disconnect Kindle?", body "Books waiting to send stay on this phone.", actions **Disconnect** and **Cancel** |
 | Cancel sending dialog | Title "Cancel sending?", body "Reaper's Gale won't reach your Kindle.", actions **Cancel sending** and **Keep** |
-| Camera permission | Kindle Drop uses the camera only to scan the pairing code. Actions **Allow camera**, or **Open settings** once Android stops asking |
+| Camera permission | Dropcap uses the camera only to scan the pairing code. Actions **Allow camera**, or **Open settings** once Android stops asking |
 | Scanner hint | Point the camera at the pairing code |
 | Pairing in progress | Connecting |
 | Pairing offline | Couldn't connect. Check your connection and try again. |
