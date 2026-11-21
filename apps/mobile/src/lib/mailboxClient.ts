@@ -25,7 +25,7 @@ export type { ItemKey, MailboxStatus };
 
 /**
  * Why a mailbox request failed, in the terms the UI explains: the key was refused, the server could
- * not be reached, or it answered with something that is not a Kindle Drop mailbox.
+ * not be reached, or it answered with something that is not a Dropcap mailbox.
  */
 export const MailboxErrorReason = Schema.Literals(["unauthorized", "unreachable", "unexpected"]);
 

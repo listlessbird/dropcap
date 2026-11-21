@@ -64,7 +64,7 @@ const RootStack = createNativeStackNavigator({
         Library: {
           screen: LibraryScreen,
           linking: "",
-          options: { title: "Kindle Drop", headerRight: SettingsButton },
+          options: { title: "Dropcap", headerRight: SettingsButton },
         },
         Book: {
           screen: BookScreen,

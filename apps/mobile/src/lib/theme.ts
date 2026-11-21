@@ -9,7 +9,7 @@ export type ThemeId = (typeof THEME_IDS)[number];
 export const DEFAULT_THEME_ID: ThemeId = "kindle-drop";
 
 export const THEME_OPTIONS: ReadonlyArray<{ readonly id: ThemeId; readonly label: string }> = [
-  { id: "kindle-drop", label: "Kindle Drop" },
+  { id: "kindle-drop", label: "Dropcap" },
   { id: "material-you", label: "Material You" },
 ];
 

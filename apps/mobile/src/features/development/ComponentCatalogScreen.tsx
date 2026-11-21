@@ -198,7 +198,7 @@ export function ComponentCatalogScreen() {
 
         <EmptyState
           title="No books yet"
-          detail="Share a book to Kindle Drop and it shows up here."
+          detail="Share a book to Dropcap and it shows up here."
           actionLabel="Add a book"
           onAction={() => {}}
         />

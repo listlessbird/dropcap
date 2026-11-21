@@ -28,7 +28,7 @@ export function ScanPairingCodeScreen() {
       <View className="flex-1 bg-screen px-5" style={{ paddingBottom: insets.bottom + 24 }}>
         <View className="flex-1 justify-center px-4">
           <AppText textRole="body" className="text-center leading-normal text-foreground-muted">
-            Kindle Drop uses the camera only to scan the pairing code.
+            Dropcap uses the camera only to scan the pairing code.
           </AppText>
         </View>
         <Button
