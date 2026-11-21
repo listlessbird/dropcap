@@ -9,11 +9,14 @@ export type Converted = Native.Converted;
 export type Thumbnail = Native.Thumbnail;
 
 export class ConvertError extends Schema.TaggedError<ConvertError>()("ConvertError", {
-  stage: Schema.Literals(["Epub", "Build", "Thumbnail", "Io"]),
+  stage: Schema.Literals(["Epub", "Build", "Thumbnail", "Io", "Fetch", "Article"]),
   message: Schema.String,
 }) {}
 
-/** The Rust EPUB converter in modules/kindle-core. Paths are file system paths, not `file://` URIs. */
+/**
+ * The Rust converter in modules/kindle-core. Paths are file system paths, not `file://` URIs. A book
+ * without a cover converts without a thumbnail.
+ */
 export class KindleCore extends Context.Service<
   KindleCore,
   {
@@ -24,6 +27,14 @@ export class KindleCore extends Context.Service<
      */
     readonly convertEpub: (
       epubPath: string,
+      outDir: string,
+    ) => Effect.Effect<Converted, ConvertError>;
+    /**
+     * Fetches a web article and converts its readable part, as `convertEpub` does. Fails in the
+     * `Fetch` stage when the page cannot be reached, as when the phone is offline.
+     */
+    readonly convertArticle: (
+      url: string,
       outDir: string,
     ) => Effect.Effect<Converted, ConvertError>;
     /** Writes the Kindle thumbnail of an existing EBOK `.azw3` into `outDir`. */
@@ -55,6 +66,13 @@ export const make = Effect.gen(function* () {
     return yield* call((signal) => native.convertEpub(epubPath, outDir, { signal }));
   });
 
+  const convertArticle = Effect.fn("KindleCore.convertArticle")(function* (
+    url: string,
+    outDir: string,
+  ) {
+    return yield* call((signal) => native.convertArticle(url, outDir, { signal }));
+  });
+
   const deviceThumbnail = Effect.fn("KindleCore.deviceThumbnail")(function* (
     azw3Path: string,
     outDir: string,
@@ -62,7 +80,7 @@ export const make = Effect.gen(function* () {
     return yield* call((signal) => native.deviceThumbnail(azw3Path, outDir, { signal }));
   });
 
-  return KindleCore.of({ convertEpub, deviceThumbnail });
+  return KindleCore.of({ convertEpub, convertArticle, deviceThumbnail });
 });
 
 export const layer = Layer.effect(KindleCore, make);

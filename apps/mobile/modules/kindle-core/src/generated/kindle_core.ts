@@ -6,7 +6,7 @@
 import nativeModule from "./kindle_core-ffi";
 import { type UniffiRustFutureContinuationCallback, type UniffiForeignFutureDroppedCallback, type UniffiForeignFutureDroppedCallbackStruct,
 } from "./kindle_core-ffi";
-import { type UniffiByteArray, AbstractFfiConverterByteArray, Cursor, FfiConverterUInt8, RustBuffer, UniffiError, UniffiInternalError, UniffiRustCaller, uniffiCreateFfiConverterString, uniffiCreateRecord, uniffiRustCallAsync, uniffiTypeNameSymbol, variantOrdinalSymbol,
+import { type UniffiByteArray, AbstractFfiConverterByteArray, Cursor, FfiConverterOptional, FfiConverterUInt8, RustBuffer, UniffiError, UniffiInternalError, UniffiRustCaller, uniffiCreateFfiConverterString, uniffiCreateRecord, uniffiRustCallAsync, uniffiTypeNameSymbol, variantOrdinalSymbol,
 } from "@ubjs/core";
 const uniffiCaller = new UniffiRustCaller(() => ({ code: 0 }));
 
@@ -18,6 +18,50 @@ const uniffiIsDebug =
   false;
 
 // Public interface members begin here.
+
+/**
+ * Fetch the web article at `url` and convert it like `convert_epub`: its title, byline, text,
+ * and images, with the page's preview image as the cover.
+ */
+export async function convertArticle(url: string, outDir: string, asyncOpts_?: { signal: AbortSignal }): Promise<Converted> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+        return await uniffiRustCallAsync(
+            /*rustCaller:*/ uniffiCaller,
+            /*rustFutureFunc:*/ () => {
+                return nativeModule().ubrn_uniffi_kindle_core_fn_func_convert_article(FfiConverterString.lower(url, nativeModule().rustbuffer_alloc),FfiConverterString.lower(outDir, nativeModule().rustbuffer_alloc)
+                );
+            },
+            /*pollFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_poll_rust_buffer,
+            /*cancelFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_cancel_rust_buffer,
+            /*completeFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_complete_rust_buffer,
+            /*freeFunc:*/ nativeModule().ubrn_ffi_kindle_core_rust_future_free_rust_buffer,
+            // Async returns always go through the JS-side converter: the
+            // FFI symbol returns the future handle (u64), and the user-level
+            // RustBuffer comes back via the shared `rust_future_complete_*`
+            // export. The bytes the runtime hands back must be deserialized
+            // here using the per-callable return-type converter.
+            // Borrowed view over foreign memory: the call site owns the free,
+            // as on the sync paths. Unconditional — a no-op where buffers are
+            // already JS-owned.
+            /*liftFunc:*/ (__rb) => {
+                try {
+                    return FfiConverterTypeConverted.lift(__rb);
+                } finally {
+                    nativeModule().rustbuffer_free(__rb);
+                }
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+            /*asyncOpts:*/ asyncOpts_,
+            /*errorHandler:*/ FfiConverterTypeConvertError.lift.bind(FfiConverterTypeConvertError)
+        );
+    } catch (__error: any) {
+        if (uniffiIsDebug && __error instanceof Error) {
+            __error.stack = __stack;
+        }
+        throw __error;
+    }
+    }
 
 /**
  * Convert `epub_path` into an EBOK AZW3 and its device thumbnail, both written to `out_dir`.
@@ -167,10 +211,12 @@ export type Converted = {
      */
     bookPath: string,
     /**
-     * The firmware's file name for this book's cover: `thumbnail_<asin>_EBOK_portrait.jpg`.
+     * The firmware's file name for this book's cover: `thumbnail_<asin>_EBOK_portrait.jpg`. None
+     * for a book without a cover, which is built as a PDOC: an EBOK without its thumbnail would
+     * get Amazon's "No image available" placeholder.
      */
-    thumbnailName: string,
-    thumbnailPath: string,
+    thumbnailName?: string,
+    thumbnailPath?: string,
     title: string,
     author: string
 }
@@ -197,23 +243,23 @@ const FfiConverterTypeConverted = (() => {
         readFromCursor(c: Cursor): TypeName {
             return {
                 bookPath: FfiConverterString.readFromCursor(c), 
-                thumbnailName: FfiConverterString.readFromCursor(c), 
-                thumbnailPath: FfiConverterString.readFromCursor(c), 
+                thumbnailName: FfiConverterOptionalString.readFromCursor(c), 
+                thumbnailPath: FfiConverterOptionalString.readFromCursor(c), 
                 title: FfiConverterString.readFromCursor(c), 
                 author: FfiConverterString.readFromCursor(c)
             };
         }
         writeIntoCursor(value: TypeName, c: Cursor): void {
             FfiConverterString.writeIntoCursor(value.bookPath, c);
-            FfiConverterString.writeIntoCursor(value.thumbnailName, c);
-            FfiConverterString.writeIntoCursor(value.thumbnailPath, c);
+            FfiConverterOptionalString.writeIntoCursor(value.thumbnailName, c);
+            FfiConverterOptionalString.writeIntoCursor(value.thumbnailPath, c);
             FfiConverterString.writeIntoCursor(value.title, c);
             FfiConverterString.writeIntoCursor(value.author, c);
         }
         allocationSize(value: TypeName): number {
             return FfiConverterString.allocationSize(value.bookPath) +
-             FfiConverterString.allocationSize(value.thumbnailName) +
-             FfiConverterString.allocationSize(value.thumbnailPath) +
+             FfiConverterOptionalString.allocationSize(value.thumbnailName) +
+             FfiConverterOptionalString.allocationSize(value.thumbnailPath) +
              FfiConverterString.allocationSize(value.title) +
              FfiConverterString.allocationSize(value.author);
             
@@ -274,7 +320,9 @@ export enum ConvertError_Tags {
     Epub = "Epub",
     Build = "Build",
     Thumbnail = "Thumbnail",
-    Io = "Io"
+    Io = "Io",
+    Fetch = "Fetch",
+    Article = "Article"
 }
 export const ConvertError = (() => {
 
@@ -450,6 +498,95 @@ Readonly<
 
     }
 
+    type Fetch__interface = {
+        tag: ConvertError_Tags.Fetch;
+        inner: 
+Readonly<
+[string
+]>
+    };
+    /**
+     * No answer from the article's site, as when the phone is offline.
+     */
+    class Fetch_ extends UniffiError implements Fetch__interface {
+        /**
+         * @private
+         * This field is private and should not be used, use `tag` instead.
+         */
+        readonly [uniffiTypeNameSymbol] = "ConvertError";
+        readonly tag = ConvertError_Tags.Fetch;
+        readonly inner: 
+Readonly<
+[string
+]>;
+        constructor(v0: string) {
+            super("ConvertError", "Fetch");
+
+            this.inner = Object.freeze([v0]);
+        }
+        static new(v0: string): Fetch_ {
+            return new Fetch_(v0);
+        }
+
+        static instanceOf(obj: any): obj is Fetch_ {
+            return obj.tag === ConvertError_Tags.Fetch;
+        }
+        static hasInner(obj: any): obj is Fetch_ {
+            return Fetch_.instanceOf(obj);
+        }
+
+        static getInner(obj: Fetch_): 
+Readonly<
+[string
+]> {
+            return obj.inner;
+        }
+
+    }
+
+    type Article__interface = {
+        tag: ConvertError_Tags.Article;
+        inner: 
+Readonly<
+[string
+]>
+    };
+    class Article_ extends UniffiError implements Article__interface {
+        /**
+         * @private
+         * This field is private and should not be used, use `tag` instead.
+         */
+        readonly [uniffiTypeNameSymbol] = "ConvertError";
+        readonly tag = ConvertError_Tags.Article;
+        readonly inner: 
+Readonly<
+[string
+]>;
+        constructor(v0: string) {
+            super("ConvertError", "Article");
+
+            this.inner = Object.freeze([v0]);
+        }
+        static new(v0: string): Article_ {
+            return new Article_(v0);
+        }
+
+        static instanceOf(obj: any): obj is Article_ {
+            return obj.tag === ConvertError_Tags.Article;
+        }
+        static hasInner(obj: any): obj is Article_ {
+            return Article_.instanceOf(obj);
+        }
+
+        static getInner(obj: Article_): 
+Readonly<
+[string
+]> {
+            return obj.inner;
+        }
+
+    }
+
     function instanceOf(obj: any): obj is ConvertError {
         return obj[uniffiTypeNameSymbol] === "ConvertError";
     }
@@ -459,12 +596,14 @@ Readonly<
   Epub: Epub_, 
   Build: Build_, 
   Thumbnail: Thumbnail_, 
-  Io: Io_
+  Io: Io_, 
+  Fetch: Fetch_, 
+  Article: Article_
     });
 
 })();
 export type ConvertError = InstanceType<
-    typeof ConvertError['Epub' | 'Build' | 'Thumbnail' | 'Io']
+    typeof ConvertError['Epub' | 'Build' | 'Thumbnail' | 'Io' | 'Fetch' | 'Article']
 >;
 
 // FfiConverter for enum ConvertError
@@ -477,6 +616,8 @@ const FfiConverterTypeConvertError = (() => {
                 case 2: return new ConvertError.Build(FfiConverterString.readFromCursor(c));
                 case 3: return new ConvertError.Thumbnail(FfiConverterString.readFromCursor(c));
                 case 4: return new ConvertError.Io(FfiConverterString.readFromCursor(c));
+                case 5: return new ConvertError.Fetch(FfiConverterString.readFromCursor(c));
+                case 6: return new ConvertError.Article(FfiConverterString.readFromCursor(c));
                 default: throw new UniffiInternalError.UnexpectedEnumCase();
             }
         }
@@ -502,6 +643,18 @@ const FfiConverterTypeConvertError = (() => {
                 }
                 case ConvertError_Tags.Io: {
                     c.writeI32(4);
+                    const inner = value.inner;
+                    FfiConverterString.writeIntoCursor(inner[0], c);
+                    return;
+                }
+                case ConvertError_Tags.Fetch: {
+                    c.writeI32(5);
+                    const inner = value.inner;
+                    FfiConverterString.writeIntoCursor(inner[0], c);
+                    return;
+                }
+                case ConvertError_Tags.Article: {
+                    c.writeI32(6);
                     const inner = value.inner;
                     FfiConverterString.writeIntoCursor(inner[0], c);
                     return;
@@ -537,12 +690,27 @@ const FfiConverterTypeConvertError = (() => {
                     size += FfiConverterString.allocationSize(inner[0]);
                     return size;
                 }
+                case ConvertError_Tags.Fetch: {
+                    const inner = value.inner;
+                    let size = 4;
+                    size += FfiConverterString.allocationSize(inner[0]);
+                    return size;
+                }
+                case ConvertError_Tags.Article: {
+                    const inner = value.inner;
+                    let size = 4;
+                    size += FfiConverterString.allocationSize(inner[0]);
+                    return size;
+                }
                 default: throw new UniffiInternalError.UnexpectedEnumCase();
             }
         }
     }
     return new FFIConverter();
 })();
+
+// FfiConverter for string | undefined
+const FfiConverterOptionalString = new FfiConverterOptional(FfiConverterString);
 
 
 /**
@@ -562,6 +730,9 @@ function uniffiEnsureInitialized() {
     const scaffoldingContractVersion = nativeModule().ubrn_ffi_kindle_core_uniffi_contract_version();
     if (bindingsContractVersion !== scaffoldingContractVersion) {
         throw new UniffiInternalError.ContractVersionMismatch(scaffoldingContractVersion, bindingsContractVersion);
+    }
+    if (nativeModule().ubrn_uniffi_kindle_core_checksum_func_convert_article() !== 9897) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_kindle_core_checksum_func_convert_article");
     }
     if (nativeModule().ubrn_uniffi_kindle_core_checksum_func_convert_epub() !== 13316) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_kindle_core_checksum_func_convert_epub");

@@ -14,12 +14,18 @@ kindling-mobi = "=0.45.6"
 uniffi = "0.31"
 thiserror = "2"
 futures-channel = "0.3"
+# Web articles: Readability's extraction, the page and its images over rustls, and any image
+# format re-encoded as the JPEG the Kindle reads. `image` matches kindling's, with its formats.
+dom_smoothie = "0.20"
+dom_query = "0.30"
+ureq = "3.5"
+url = "2"
+image = "0.25.10"
 
 [dev-dependencies]
 pollster = "0.4"
-# Same versions kindling uses, to build fixture EPUBs in tests.
+# Same version kindling uses, to build fixture EPUBs in tests.
 zip = { version = "2.6.1", default-features = false, features = ["deflate"] }
-image = { version = "0.25.10", default-features = false, features = ["jpeg"] }
 
 [profile.release]
 opt-level = "s"

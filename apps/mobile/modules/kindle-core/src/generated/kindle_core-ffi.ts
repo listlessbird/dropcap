@@ -67,9 +67,11 @@ interface NativeModuleInterface {
     ubrn_ffi_kindle_core_rust_future_cancel_void(handle: bigint): void;
     ubrn_ffi_kindle_core_rust_future_complete_void(handle: bigint, uniffi_out_err: UniffiRustCallStatus): void;
     ubrn_ffi_kindle_core_rust_future_free_void(handle: bigint): void;
+    ubrn_uniffi_kindle_core_fn_func_convert_article(url: Uint8Array, outDir: Uint8Array): bigint;
     ubrn_uniffi_kindle_core_fn_func_convert_epub(epubPath: Uint8Array, outDir: Uint8Array): bigint;
     ubrn_uniffi_kindle_core_fn_func_device_thumbnail(azw3Path: Uint8Array, outDir: Uint8Array): bigint;
     ubrn_ffi_kindle_core_uniffi_contract_version(): number;
+    ubrn_uniffi_kindle_core_checksum_func_convert_article(): number;
     ubrn_uniffi_kindle_core_checksum_func_convert_epub(): number;
     ubrn_uniffi_kindle_core_checksum_func_device_thumbnail(): number;
     // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`
