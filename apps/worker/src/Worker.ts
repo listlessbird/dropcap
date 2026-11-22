@@ -33,7 +33,7 @@ const HttpPlatformWeb = Layer.succeed(HttpPlatform.HttpPlatform, {
 
 const encodeItemId = Schema.encodeSync(ItemId);
 
-// ts.sh splits each listing line on tabs: the id, the verb, then the verb's argument.
+// dropcap.sh splits each listing line on tabs: the id, the verb, then the verb's argument.
 const commandLine = Command.match({
   DeleteBook: ({ path }) => `delete\t${path}`,
   Rescan: () => "rescan",

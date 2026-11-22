@@ -29,6 +29,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The Kindle script tests run under busybox sh with the sqlite3 CLI, like the device.
+      - run: sudo apt-get install -y --no-install-recommends busybox sqlite3
+
       - name: Format
         run: pnpm vp fmt --check
 

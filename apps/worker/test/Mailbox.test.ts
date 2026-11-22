@@ -42,7 +42,7 @@ const appClient = Effect.gen(function* () {
   });
 });
 
-// Requests shaped like ts.sh's `curl -sf -H "Authorization: Bearer ..."` on the Kindle.
+// Requests shaped like dropcap.sh's `curl -sf -H "Authorization: Bearer ..."` on the Kindle.
 const kindle = (method: "GET" | "PUT" | "DELETE", path: string, as = kindleToken) =>
   Effect.gen(function* () {
     const { url } = yield* stack;

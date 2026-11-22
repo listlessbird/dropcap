@@ -57,6 +57,8 @@ export default defineConfig({
             extends: true,
             test: { name: "lint-rules", include: ["oxlint-plugin-kd/**/*.test.ts"] },
           },
+          // Runs the Kindle scripts under busybox sh with the sqlite3 CLI, as the device does.
+          { extends: true, test: { name: "kindle", include: ["kindle/**/*.test.ts"] } },
         ]
       : undefined,
   },

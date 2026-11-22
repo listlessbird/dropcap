@@ -11,7 +11,7 @@ import * as HttpApiMiddleware from "effect/http-api/HttpApiMiddleware";
 import * as HttpApiSchema from "effect/http-api/HttpApiSchema";
 import * as HttpApiSecurity from "effect/http-api/HttpApiSecurity";
 
-// The Kindle's ts.sh parses "<id>\t<name>\n" listing lines and writes <name> to disk.
+// The Kindle's dropcap.sh parses "<id>\t<name>\n" listing lines and writes <name> to disk.
 export const ItemName = Schema.String.check(Schema.isPattern(/^[^\t\n\r/]+$/)).pipe(
   Schema.brand("ItemName"),
 );
@@ -55,7 +55,7 @@ export class EitherAuth extends HttpApiMiddleware.Service<EitherAuth>()("EitherA
   security: { bearer: HttpApiSecurity.bearer },
 }) {}
 
-// ts.sh deletes by path, so `.` and `..` segments are refused to keep a command inside documents/.
+// dropcap.sh deletes by path, so `.` and `..` segments are refused to keep a command inside documents/.
 export const BookPath = Schema.String.check(
   Schema.isPattern(/^\/mnt\/us\/documents(?:\/(?!\.\.?(?:\/|$))[^/\t\n\r]+)+$/),
 ).pipe(Schema.brand("BookPath"));
@@ -89,7 +89,7 @@ const BookFromFields = TabSeparated.pipe(
 const IntFromString = Schema.FiniteFromString.check(Schema.isInt());
 
 /**
- * What ts.sh reports on every wake, as curl's default form encoding. It leaves out a value it
+ * What dropcap.sh reports on every wake, as curl's default form encoding. It leaves out a value it
  * could not read, and the Worker rejects a malformed one.
  */
 export const DeviceReport = Schema.Struct({
@@ -136,7 +136,7 @@ export const commandId = (queuedAtMillis: number, random: number) =>
 /** The Worker's clock when the app queued the command, in epoch milliseconds. */
 export const queuedAtOfId = (id: CommandId) => Number(id.slice(0, 15));
 
-/** How a command ended on the Kindle. ts.sh sends it as a form, and R2 keeps it as metadata. */
+/** How a command ended on the Kindle. dropcap.sh sends it as a form, and R2 keeps it as metadata. */
 export const Outcome = Schema.Union([
   Schema.Struct({ outcome: Schema.Literal("ok") }),
   Schema.Struct({ outcome: Schema.Literal("failed"), message: Schema.String }),
@@ -200,7 +200,7 @@ export class AppGroup extends HttpApiGroup.make("app")
   .add(HttpApiEndpoint.delete("dismiss", "/commands/:id", { params: { id: CommandId } }))
   .middleware(AppAuth) {}
 
-/** The Kindle's side, driven by curl in ts.sh on every wake. */
+/** The Kindle's side, driven by curl in dropcap.sh on every wake. */
 export class KindleGroup extends HttpApiGroup.make("kindle")
   .add(HttpApiEndpoint.get("list", "/items/", { success: Text }))
   .add(
