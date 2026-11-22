@@ -12,6 +12,8 @@ export function Notice(props: {
   readonly floating?: boolean;
   readonly onDismiss?: () => void;
   readonly dismissLabel?: string;
+  /** One short verb, such as "Try again", shown before the dismiss button. */
+  readonly action?: { readonly label: string; readonly onPress: () => void };
 }) {
   const danger = props.tone === "danger";
 
@@ -42,6 +44,24 @@ export function Notice(props: {
       >
         {props.message}
       </AppText>
+      {props.action ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={props.action.onPress}
+          hitSlop={10}
+          className="min-h-6 justify-center active:opacity-60"
+        >
+          <AppText
+            textRole="footnote"
+            className={cn(
+              "font-sans-medium",
+              danger ? "text-danger-foreground" : "text-primary-text",
+            )}
+          >
+            {props.action.label}
+          </AppText>
+        </Pressable>
+      ) : null}
       {props.onDismiss ? (
         <Pressable
           accessibilityRole="button"

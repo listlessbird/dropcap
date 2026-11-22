@@ -41,7 +41,18 @@ export function createKindleState<E>(
       .pipe(Atom.keepAlive, Atom.withLabel(`kindle:dismiss:${id}`)),
   );
 
-  return { queueAtom, dismissAtom } as const;
+  // Queues the failed command again, then clears the failure, so its notice goes away.
+  const retryAtom = Atom.family((id: CommandId) =>
+    runtime
+      .fn((command: Command, get) =>
+        withConnection(get, (mailbox, connection) =>
+          mailbox.queue(connection, command).pipe(Effect.andThen(mailbox.dismiss(connection, id))),
+        ),
+      )
+      .pipe(Atom.keepAlive, Atom.withLabel(`kindle:retry:${id}`)),
+  );
+
+  return { queueAtom, dismissAtom, retryAtom } as const;
 }
 
 export const kindleState = createKindleState(

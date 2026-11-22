@@ -12,10 +12,10 @@ import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
 
 import type { MailboxError, MailboxErrorReason } from "../../lib/mailboxClient";
-import { relativeTime } from "../../lib/relativeTime";
 import type { ConnectionStoreError } from "../../persistence/connection-store";
 import type { MobileDatabaseError } from "../../persistence/mobile-database";
 import { gigabytes } from "../../lib/units";
+import { checkedInWhen } from "../library/libraryCopy";
 
 const pending = (commands: ReadonlyArray<QueuedCommand>) =>
   commands.filter(({ outcome }) => Option.isNone(outcome));
@@ -55,41 +55,57 @@ const fileTitle = (path: BookPath) => {
   return dot > 0 ? file.slice(0, dot) : file;
 };
 
-const failureText = (command: Command, message: string) =>
+const failureText = (command: Command) =>
   Command.match(command, {
-    DeleteBook: ({ path }) => `Couldn't delete ${fileTitle(path)}: ${message}`,
-    Rescan: () => `Couldn't rescan the library: ${message}`,
+    DeleteBook: ({ path }) => `Couldn't delete ${fileTitle(path)}`,
+    Rescan: () => "Couldn't rescan",
   });
 
-/** Commands the Kindle could not run, newest first, each with what to tell the user. */
+/** Commands the Kindle could not run, newest first. The Kindle's own error text stays out of the UI. */
 export const failures = (commands: ReadonlyArray<QueuedCommand>) =>
   commands
     .flatMap(({ id, command, outcome }) =>
       Option.isSome(outcome) && outcome.value.outcome === "failed"
-        ? [{ id, text: failureText(command, outcome.value.message) }]
+        ? [{ id, command, text: failureText(command) }]
         : [],
     )
     .reverse();
 
-/** The rows of the device summary. A value the Kindle could not read is left out. */
+/** Entries whose title contains `query`, ignoring case. A blank query matches everything. */
+export const searchEntries = (entries: ReadonlyArray<LibraryEntry>, query: string) => {
+  const needle = query.trim().toLocaleLowerCase();
+
+  return needle === ""
+    ? entries
+    : entries.filter(({ book }) => book.title.toLocaleLowerCase().includes(needle));
+};
+
+/** The device tiles and the line under them. A value the Kindle could not read is left out. */
 export const deviceSummary = (device: Device, now: DateTime.Utc) => ({
-  reported: relativeTime(device.reportedAt, now),
+  checkedIn: [`Kindle checked in ${checkedInWhen(device.reportedAt, now)}`, device.firmware]
+    .filter(Boolean)
+    .join(" · "),
   battery: Option.fromNullishOr(device.battery).pipe(
-    Option.map((percent) => (device.charging ? `${percent}%, charging` : `${percent}%`)),
+    Option.map((percent) => ({ value: `${percent}%`, charging: device.charging === true })),
   ),
   free: Option.fromNullishOr(device.freeKb).pipe(
-    Option.map((kb) => `${gigabytes(kb * 1024)} free`),
+    Option.map((kb) => ({
+      value: gigabytes(kb * 1024),
+      used: Option.fromNullishOr(device.totalKb).pipe(
+        Option.filter((total) => total > 0),
+        Option.map((total) => 1 - kb / total),
+      ),
+    })),
   ),
-  firmware: Option.fromNullishOr(device.firmware),
 });
 
 const COMMAND_FAILED: Readonly<Record<MailboxErrorReason, string>> = {
   unauthorized: "This pairing code no longer works. Create a new one on your computer.",
-  unreachable: "Couldn't reach your Kindle's mailbox. Check your connection and try again.",
-  unexpected: "Couldn't reach your Kindle's mailbox. Try again in a few minutes.",
+  unreachable: "Couldn't save this change. Check your connection and try again.",
+  unexpected: "Couldn't save this change. Try again in a few minutes.",
 };
 
-/** Why queueing or cancelling a command failed. Nothing while unpaired: the app is leaving. */
+/** Why queueing, retrying or cancelling a command failed. Nothing while unpaired: the app is leaving. */
 export const commandError = (
   result: AsyncResult.AsyncResult<
     unknown,

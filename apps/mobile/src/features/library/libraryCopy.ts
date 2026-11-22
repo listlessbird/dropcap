@@ -137,7 +137,8 @@ export const librarySections = (books: ReadonlyArray<Book>) => {
 
 const QUIET_AFTER = Duration.days(1);
 
-const checkedInWhen = (at: DateTime.Utc, now: DateTime.Utc) => {
+/** "just now", "2 h ago", "on 12 Oct": a check-in time that reads mid-sentence. */
+export const checkedInWhen = (at: DateTime.Utc, now: DateTime.Utc) => {
   const when = relativeTime(at, now);
 
   if (when === "Just now" || when === "Yesterday") return when.toLowerCase();

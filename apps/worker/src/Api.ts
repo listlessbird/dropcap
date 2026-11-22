@@ -98,6 +98,7 @@ export const DeviceReport = Schema.Struct({
     Schema.FiniteFromString.pipe(Schema.decodeTo(Schema.BooleanFromBit)),
   ),
   freeKb: Schema.optionalKey(IntFromString),
+  totalKb: Schema.optionalKey(IntFromString),
   firmware: Schema.optionalKey(Schema.String),
   books: Schema.Array(BookFromFields).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
 });

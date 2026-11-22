@@ -10,17 +10,22 @@ import { useFocusEffect } from "@react-navigation/native";
 import type * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
+import { useState, type ReactNode } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AppText, AppTextInput } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import * as Dialog from "../../components/ui/Dialog";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
+import { IconButton } from "../../components/ui/IconButton";
 import { ListActionRow } from "../../components/ui/ListActionRow";
 import { ListRowLayout } from "../../components/ui/ListRowLayout";
 import { ListSection } from "../../components/ui/ListSection";
 import { Notice } from "../../components/ui/Notice";
+import { Progress } from "../../components/ui/Progress";
+import { MOBILE_RADIUS } from "../../lib/designTokens";
 import { booksState } from "../../state/books";
 import { nowAtom } from "../../state/clock";
 import { kindleState } from "../../state/kindle";
@@ -31,52 +36,90 @@ import {
   failures,
   libraryEntries,
   rescanPending,
+  searchEntries,
   type LibraryEntry,
 } from "./kindleCopy";
 
-function DeviceSection(props: { readonly device: Device; readonly now: DateTime.Utc }) {
-  const { reported, battery, free, firmware } = deviceSummary(props.device, props.now);
-
+function Tile(props: {
+  readonly label: string;
+  readonly value: string;
+  readonly children?: ReactNode;
+}) {
   return (
-    <ListSection
-      title="Kindle"
-      footer="As of its last wake. It reports again the next time it wakes."
+    <View
+      className="flex-1 gap-1 bg-grouped-card px-4 py-3"
+      style={{ borderRadius: MOBILE_RADIUS.group.android }}
     >
-      <ListRowLayout label="Last report" detail={reported} />
-      {Option.isSome(battery) ? <ListRowLayout label="Battery" detail={battery.value} /> : null}
-      {Option.isSome(free) ? <ListRowLayout label="Storage" detail={free.value} /> : null}
-      {Option.isSome(firmware) ? <ListRowLayout label="Firmware" detail={firmware.value} /> : null}
-    </ListSection>
+      <AppText textRole="footnote" className="text-foreground-muted">
+        {props.label}
+      </AppText>
+      <AppText textRole="display" className="font-sans-medium text-foreground">
+        {props.value}
+      </AppText>
+      {props.children}
+    </View>
   );
 }
 
-function FailureNotice(props: { readonly id: CommandId; readonly text: string }) {
+function DeviceTiles(props: { readonly device: Device; readonly now: DateTime.Utc }) {
+  const { checkedIn, battery, free } = deviceSummary(props.device, props.now);
+
+  return (
+    <View className="gap-2">
+      <View className="flex-row gap-2">
+        {Option.isSome(battery) ? (
+          <Tile
+            label={battery.value.charging ? "Battery · Charging" : "Battery"}
+            value={battery.value.value}
+          />
+        ) : null}
+        {Option.isSome(free) ? (
+          <Tile label="Free" value={free.value.value}>
+            {Option.isSome(free.value.used) ? (
+              <Progress value={free.value.used.value} label="Storage used" className="pt-1" />
+            ) : null}
+          </Tile>
+        ) : null}
+      </View>
+      <AppText textRole="footnote" className="px-4 text-foreground-muted">
+        {checkedIn}
+      </AppText>
+    </View>
+  );
+}
+
+function FailureNotice(props: {
+  readonly id: CommandId;
+  readonly command: Command;
+  readonly text: string;
+}) {
   const [dismissed, dismiss] = useAtom(kindleState.dismissAtom(props.id));
+  const [retried, retry] = useAtom(kindleState.retryAtom(props.id));
 
   return (
     <Notice
       tone="danger"
       icon="alert-circle"
-      message={commandError(dismissed) ?? props.text}
+      message={commandError(retried) ?? commandError(dismissed) ?? props.text}
+      action={{ label: "Try again", onPress: () => retry(props.command) }}
       dismissLabel="Dismiss"
       onDismiss={() => dismiss()}
     />
   );
 }
 
-function BookEntryRow(props: { readonly entry: LibraryEntry; readonly onDelete: () => void }) {
+function BookRow(props: { readonly entry: LibraryEntry; readonly onDelete: () => void }) {
   const { book, deleting } = props.entry;
+  const title = book.title || "Untitled";
 
   return Option.match(deleting, {
     onNone: () => (
       <ListActionRow
-        icon="book"
-        label={book.title || "Untitled"}
+        label={title}
         onPress={() =>
           Dialog.confirm({
-            title: `Delete ${book.title || "this book"}?`,
-            message:
-              "It's removed from your Kindle, with your place in it, the next time your Kindle wakes.",
+            title: `Delete ${title}?`,
+            message: "Removed from your Kindle when it next wakes",
             confirmText: "Delete",
             cancelText: "Cancel",
             destructive: true,
@@ -85,50 +128,77 @@ function BookEntryRow(props: { readonly entry: LibraryEntry; readonly onDelete: 
         }
       />
     ),
-    onSome: ({ id }) => <PendingDeleteRow id={id} title={book.title || "Untitled"} />,
+    onSome: ({ id }) => <DeletingRow id={id} title={title} />,
   });
 }
 
-function PendingDeleteRow(props: { readonly id: CommandId; readonly title: string }) {
-  const [cancelled, cancel] = useAtom(kindleState.dismissAtom(props.id));
+function DeletingRow(props: { readonly id: CommandId; readonly title: string }) {
+  const [undone, undo] = useAtom(kindleState.dismissAtom(props.id));
 
   return (
-    <ListActionRow
-      icon="trash"
+    <ListRowLayout
       label={props.title}
-      description={commandError(cancelled) ?? "Deletes when your Kindle wakes. Tap to keep it."}
-      loading={cancelled.waiting}
-      onPress={() =>
-        Dialog.confirm({
-          title: `Keep ${props.title}?`,
-          message: "Your Kindle won't delete it.",
-          confirmText: "Keep",
-          cancelText: "Cancel",
-          onConfirm: () => cancel(),
-        })
+      description={commandError(undone) ?? "Deleting · Waiting for Kindle"}
+      accessory={
+        <Button tone="text" label="Undo" loading={undone.waiting} onPress={() => undo()} />
       }
     />
   );
 }
 
-function Report(props: {
+function Library(props: {
   readonly device: Device;
   readonly commands: ReadonlyArray<QueuedCommand>;
-  readonly now: DateTime.Utc;
   readonly onDelete: (path: BookPath) => void;
+  readonly onRescan: () => void;
+  readonly rescanDisabled: boolean;
 }) {
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
   const entries = libraryEntries(props.device.books, props.commands);
+  const shown = searchEntries(entries, query);
+  const rescanning = rescanPending(props.commands);
 
   return (
-    <>
-      <DeviceSection device={props.device} now={props.now} />
+    <View className="gap-2">
+      <View className="flex-row items-center gap-1 pl-4">
+        <AppText textRole="footnote" className="flex-1 font-sans-medium text-foreground-muted">
+          {`Library · ${entries.length}`}
+        </AppText>
+        <IconButton
+          icon={searching ? "x" : "search"}
+          accessibilityLabel={searching ? "Close search" : "Search books"}
+          onPress={() => {
+            setSearching(!searching);
+            setQuery("");
+          }}
+        />
+        <Button
+          tone="text"
+          label="Rescan"
+          disabled={rescanning || props.rescanDisabled}
+          onPress={props.onRescan}
+        />
+      </View>
 
-      <ListSection title={`Library (${entries.length})`}>
-        {entries.length === 0 ? (
-          <ListRowLayout label="No books on your Kindle" />
+      {searching ? (
+        <AppTextInput
+          autoFocus
+          accessibilityLabel="Search books"
+          placeholder={`Search ${entries.length} books`}
+          value={query}
+          onChangeText={setQuery}
+          autoCorrect={false}
+          returnKeyType="search"
+        />
+      ) : null}
+
+      <ListSection footer={rescanning ? "Rescan waiting for Kindle" : undefined}>
+        {shown.length === 0 ? (
+          <ListRowLayout label={entries.length === 0 ? "No books on your Kindle" : "No matches"} />
         ) : (
-          entries.map((entry) => (
-            <BookEntryRow
+          shown.map((entry) => (
+            <BookRow
               key={entry.book.path}
               entry={entry}
               onDelete={() => props.onDelete(entry.book.path)}
@@ -136,7 +206,7 @@ function Report(props: {
           ))
         )}
       </ListSection>
-    </>
+    </View>
   );
 }
 
@@ -163,44 +233,39 @@ export function KindleScreen() {
 
   const commands = Option.match(last, { onNone: () => [], onSome: (value) => value.commands });
   const device = Option.flatMap(last, (value) => value.device);
-  const rescanning = rescanPending(commands);
 
   return (
     <ScrollView
       className="flex-1 bg-screen"
+      keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 32 }}
     >
-      <View className="gap-6 px-4">
+      <View className="gap-5 px-4">
         {error ? <ErrorBanner message={error} /> : null}
         {queueError ? <ErrorBanner message={queueError} /> : null}
 
-        {failures(commands).map(({ id, text }) => (
-          <FailureNotice key={id} id={id} text={text} />
+        {failures(commands).map(({ id, command, text }) => (
+          <FailureNotice key={id} id={id} command={command} text={text} />
         ))}
 
         {Option.isSome(device) ? (
-          <Report
-            device={device.value}
-            commands={commands}
-            now={now}
-            onDelete={(path) => queue(Command.cases.DeleteBook.make({ path }))}
-          />
+          <>
+            <DeviceTiles device={device.value} now={now} />
+            <Library
+              device={device.value}
+              commands={commands}
+              onDelete={(path) => queue(Command.cases.DeleteBook.make({ path }))}
+              onRescan={() => queue(Command.cases.Rescan.make({}))}
+              rescanDisabled={queued.waiting}
+            />
+          </>
         ) : (
           <EmptyState
             icon="device-tablet"
             title="No report yet"
-            detail="Your Kindle reports its battery and library the next time it wakes."
+            detail="Wake your Kindle to see it here"
           />
         )}
-
-        <Button
-          tone="secondary"
-          fullWidth
-          icon="refresh"
-          label={rescanning ? "Rescans when your Kindle wakes" : "Rescan library"}
-          disabled={rescanning || queued.waiting}
-          onPress={() => queue(Command.cases.Rescan.make({}))}
-        />
       </View>
     </ScrollView>
   );

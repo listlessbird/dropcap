@@ -21,6 +21,7 @@ const paired = Schema.decodeUnknownSync(Connection)({
 // A mailbox that keeps queued commands in memory, and a status atom like booksState's.
 const mountState = Effect.gen(function* () {
   const queued = yield* Ref.make<ReadonlyArray<QueuedCommand>>([]);
+  const next = yield* Ref.make(0);
 
   const layer = Layer.mergeAll(
     Layer.succeed(
@@ -43,7 +44,7 @@ const mountState = Effect.gen(function* () {
           })),
         queue: (_, command: Command) =>
           Effect.gen(function* () {
-            const id = commandId((yield* Ref.get(queued)).length, 0);
+            const id = commandId(yield* Ref.getAndUpdate(next, (n) => n + 1), 0);
 
             yield* Ref.update(queued, (all) => [
               ...all,
@@ -97,6 +98,28 @@ describe("kindle state", () => {
       yield* AtomRegistry.getResult(registry, dismissAtom, { suspendOnWaiting: true });
 
       assert.deepStrictEqual(yield* commands, []);
+    }),
+  );
+
+  it.effect("trying a failed command again queues it anew and clears the failure", () =>
+    Effect.gen(function* () {
+      const { state, registry, commands } = yield* mountState;
+      const rescan = Command.cases.Rescan.make({});
+
+      registry.set(state.queueAtom, rescan);
+      yield* AtomRegistry.getResult(registry, state.queueAtom, { suspendOnWaiting: true });
+      const [failed] = yield* commands;
+      assert.isDefined(failed);
+
+      const retryAtom = state.retryAtom(failed.id);
+      registry.mount(retryAtom);
+      registry.set(retryAtom, rescan);
+      yield* AtomRegistry.getResult(registry, retryAtom, { suspendOnWaiting: true });
+
+      const after = yield* commands;
+      assert.strictEqual(after.length, 1);
+      assert.notStrictEqual(after[0]?.id, failed.id);
+      assert.strictEqual(after[0]?.command._tag, "Rescan");
     }),
   );
 });

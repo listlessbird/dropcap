@@ -9,7 +9,13 @@ import {
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 
-import { deviceSummary, failures, libraryEntries, rescanPending } from "./kindleCopy";
+import {
+  deviceSummary,
+  failures,
+  libraryEntries,
+  rescanPending,
+  searchEntries,
+} from "./kindleCopy";
 
 const now = DateTime.fromDateUnsafe(new Date(2026, 10, 17, 12, 0));
 
@@ -54,7 +60,7 @@ describe("rescanPending", () => {
 });
 
 describe("failures", () => {
-  it("names a deleted book from its file, newest first, and skips commands that ran", () => {
+  it("names a deleted book from its file, newest first, without the Kindle's error text", () => {
     const listed = failures([
       queued(1, Command.cases.DeleteBook.make({ path: dune.path }), {
         outcome: "failed",
@@ -66,20 +72,48 @@ describe("failures", () => {
 
     assert.deepStrictEqual(
       listed.map(({ text }) => text),
-      ["Couldn't rescan the library: no lipc", "Couldn't delete Dune: busy"],
+      ["Couldn't rescan", "Couldn't delete Dune"],
     );
   });
 });
 
+describe("searchEntries", () => {
+  it("matches titles regardless of case, and a blank query keeps every book", () => {
+    const entries = libraryEntries([emma, dune], []);
+
+    assert.deepStrictEqual(
+      searchEntries(entries, " dU ").map(({ book }) => book.title),
+      ["Dune"],
+    );
+    assert.strictEqual(searchEntries(entries, "  ").length, 2);
+  });
+});
+
 describe("deviceSummary", () => {
-  it("says when the Kindle charges and leaves out what it could not read", () => {
+  it("fills the storage meter only when the Kindle reports its total size", () => {
     const summary = deviceSummary(
-      { reportedAt: now, battery: 83, charging: true, freeKb: 2_000_000, books: [] },
+      {
+        reportedAt: now,
+        battery: 83,
+        charging: true,
+        freeKb: 1_000_000,
+        totalKb: 4_000_000,
+        firmware: "5.16.2.1.1",
+        books: [],
+      },
       now,
     );
 
-    assert.deepStrictEqual(summary.battery, Option.some("83%, charging"));
-    assert.deepStrictEqual(summary.free, Option.some("2.0 GB free"));
-    assert.isTrue(Option.isNone(summary.firmware));
+    assert.strictEqual(summary.checkedIn, "Kindle checked in just now · 5.16.2.1.1");
+    assert.deepStrictEqual(summary.battery, Option.some({ value: "83%", charging: true }));
+    assert.deepStrictEqual(
+      Option.flatMap(summary.free, ({ used }) => used),
+      Option.some(0.75),
+    );
+
+    const partial = deviceSummary({ reportedAt: now, freeKb: 1_000_000, books: [] }, now);
+    assert.strictEqual(partial.checkedIn, "Kindle checked in just now");
+    assert.isTrue(Option.isNone(partial.battery));
+    assert.isTrue(Option.isNone(Option.flatMap(partial.free, ({ used }) => used)));
   });
 });

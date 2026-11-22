@@ -167,6 +167,13 @@ export function ComponentCatalogScreen() {
               onDismiss={() => setNoticeVisible(false)}
             />
           ) : null}
+          <Notice
+            tone="danger"
+            icon="alert-circle"
+            message="Couldn't delete Old Notes"
+            action={{ label: "Try again", onPress: () => {} }}
+            onDismiss={() => {}}
+          />
           <ErrorBanner message="Could not reach the Kindle." />
         </View>
 

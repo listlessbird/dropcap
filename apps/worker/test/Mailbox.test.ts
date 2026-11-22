@@ -333,6 +333,7 @@ test(
       ["battery", "83"],
       ["charging", "1"],
       ["freeKb", "2048000"],
+      ["totalKb", "3188640"],
       ["firmware", "5.16.2.1.1"],
       ["books", "/mnt/us/documents/A.azw3\tA Book"],
       ["books", "/mnt/us/documents/sub/B #2; draft.azw3\tB #2; draft"],
@@ -346,6 +347,7 @@ test(
         battery: 83,
         charging: true,
         freeKb: 2048000,
+        totalKb: 3188640,
         firmware: "5.16.2.1.1",
         books: [
           { path: "/mnt/us/documents/A.azw3", title: "A Book" },
