@@ -36,7 +36,7 @@ Use exactly one term per concept.
 | Concept | Use | Never |
 |---|---|---|
 | The action | Send, Sending, Send to Kindle | Upload, Drop, Push, Deliver |
-| Converting the EPUB | Converting | Processing, Building |
+| Converting the EPUB or article | Converting | Processing, Building |
 | Sending to the mailbox | Uploading, with a percentage | Syncing |
 | In the mailbox, Kindle asleep | Waiting for Kindle | Queued, Pending |
 | The Kindle took it | On Kindle | Delivered, Synced, Done |
@@ -55,17 +55,17 @@ The mockups are in [mockups.html](mockups.html). Open it in a browser.
 - A status chip at the top shows "Kindle checked in 2 h ago" with a green dot. When the Kindle hasn't checked in for more than a day, the dot turns amber and the chip stays neutral.
 - Under a "Sending" section, each row has a cover, title, author, and a status line. Converting shows an indeterminate bar. Uploading shows a determinate bar and "Uploading · 46%". Waiting shows "Waiting for Kindle".
 - Under a "Recent" section, rows show "On Kindle · Yesterday" or, for failures, "Couldn't convert · Tap for details" in the danger color. Recent keeps books for 30 days, the mailbox's lifetime. A long-press clears a row.
-- The empty state has the title "No books yet", the line "Share an EPUB, AZW3, PDF, or TXT file from any app. It arrives the next time your Kindle wakes", and a "Choose a file" button.
+- The empty state has the title "No books yet", the line "Share an EPUB, AZW3, PDF, or TXT file, or a link to an article, from any app. It arrives the next time your Kindle wakes", and a "Choose a file" button.
 
 **Share sheet.** The app opens as a bottom sheet over the app you shared from.
-- It shows the cover, title, author, and "EPUB · 9.1 MB", with **Send to Kindle** as the primary action and **Cancel** as a text button.
+- It shows the cover, title, author, and "EPUB · 9.1 MB" (or "Article · example.com" for a shared link), with **Send to Kindle** as the primary action and **Cancel** as a text button.
 - Conversion starts the moment the file arrives, so tapping Send feels instant. Cancel discards the conversion's output.
 - After Send, the sheet closes and the source app stays in front.
 - "Confirm before sending" is on by default. When it's off, sharing sends at once and shows a brief "Sending to Kindle" confirmation.
 
 **Book** (detail).
 - The cover, title, and author are centered at the top.
-- A four-step timeline follows: Converted (size and time), Uploaded (time), Waiting for Kindle ("Arrives the next time your Kindle wakes"), and On Kindle. Only an EPUB is converted, so an AZW3, PDF, or TXT file starts at Uploaded.
+- A four-step timeline follows: Converted (size and time), Uploaded (time), Waiting for Kindle ("Arrives the next time your Kindle wakes"), and On Kindle. Only an EPUB or an article is converted, so an AZW3, PDF, or TXT file starts at Uploaded.
 - The one action is "Cancel sending" while the book is waiting. For a failure, show the error copy and "Try again".
 
 **First run** (Connect your Kindle).
@@ -87,6 +87,8 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 |---|---|
 | Conversion failed | Couldn't convert this book. Try another copy of the file. |
 | Unsupported file | Dropcap sends EPUB, AZW3, PDF, and TXT files. |
+| Article failed, offline | Couldn't load this article. Sending resumes when you're back online. |
+| Article failed, no article on the page | Couldn't find an article on this page. Try another link. |
 | Upload failed, offline | Couldn't upload. Dropcap retries when you're back online. |
 | Upload failed, server | Couldn't upload. Try again in a few minutes. |
 | Pairing code unreadable | This isn't a Dropcap pairing code. |
@@ -114,6 +116,8 @@ At the bottom is "Disconnect Kindle" in the danger color, behind a confirmation 
 | Shared file unreadable | Couldn't open this file. Try sharing it again. |
 | Share sheet, not connected | Title "Connect your Kindle", body "Scan the pairing code from your computer, then share the book again", actions **Connect Kindle** and **Cancel** |
 | Share sheet, unsupported file | Title is the file's name, body is the unsupported file copy, action **Close** |
+| Share sheet, text without a link | Title is the shared subject or "Shared text", body "This text has no link to an article. Share the page from your browser.", action **Close** |
+| Share sheet, article offline | The article failed offline copy, with **Send to Kindle** still available |
 | Book, timeline failure | "Couldn't convert" or "Couldn't upload" under the step that failed |
 | Book, canceled | "Sending canceled · 28 Oct, 10:05 am" under Waiting for Kindle |
 | Book, missing | Title "Book not found", body "It may have been cleared from Recent" |

@@ -8,6 +8,7 @@ import {
 import * as Arr from "effect/Array";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
@@ -17,21 +18,35 @@ export const BookId = Schema.String.pipe(Schema.brand("BookId"));
 
 export type BookId = typeof BookId.Type;
 
+/** The formats of files the app sends. */
 export const BookFormat = Schema.Literals(["epub", "azw3", "pdf", "txt"]);
 
 export type BookFormat = typeof BookFormat.Type;
 
-/** Only an EPUB is converted. The Kindle reads the other formats as shared. */
-export const isConvertible = (format: BookFormat) => format === "epub";
-
 /** The file as the user shared it. */
-export const Source = Schema.Struct({
+export const FileSource = Schema.Struct({
   name: Schema.String,
   format: BookFormat,
   bytes: Schema.Number,
 });
 
+export type FileSource = typeof FileSource.Type;
+
+/** A link to a web article, fetched when it converts. `name` is the page title shared with it. */
+export const ArticleSource = Schema.Struct({
+  name: Schema.String,
+  format: Schema.Literal("article"),
+  url: Schema.String,
+});
+
+/** What the user shared: a file, or a link to an article. */
+export const Source = Schema.Union([FileSource, ArticleSource]);
+
 export type Source = typeof Source.Type;
+
+/** An EPUB and an article are converted. The Kindle reads the other formats as shared. */
+export const isConvertible = (format: Source["format"]) =>
+  format === "epub" || format === "article";
 
 /**
  * What the Kindle receives. A book sent as shared has no conversion time, and only an AZW3 that
@@ -50,6 +65,14 @@ export type Converted = typeof Converted.Type;
 
 const Items = Schema.NonEmptyArray(ItemKey);
 
+/**
+ * Why a conversion stopped: the article's page could not be reached, which retries once the phone is
+ * online, or the book or page could not be converted.
+ */
+export const ConvertFailure = Schema.Literals(["unreachable", "invalid"]);
+
+export type ConvertFailure = typeof ConvertFailure.Type;
+
 /** Why an upload stopped: the mailbox's reasons, or the book file is gone from this phone. */
 export const UploadFailure = Schema.Literals([...MailboxErrorReason.literals, "missing"]);
 
@@ -65,7 +88,11 @@ export const BookStatus = Schema.TaggedUnion({
   Waiting: { converted: Converted, items: Items },
   OnKindle: { converted: Converted, items: Items, arrivedAt: Schema.DateTimeUtcFromMillis },
   /** Keeps `confirmed`, so a sheet's Cancel discards only a book the user never sent. */
-  ConvertFailed: { confirmed: Schema.Boolean },
+  ConvertFailed: {
+    confirmed: Schema.Boolean,
+    // Failures stored before articles had no reason, and were all conversions.
+    reason: ConvertFailure.pipe(Schema.withDecodingDefaultKey(Effect.succeed("invalid" as const))),
+  },
   UploadFailed: {
     converted: Converted,
     uploaded: Schema.Array(ItemKey),
@@ -91,7 +118,7 @@ export type Book = typeof Book.Type;
 
 export type BookEvent = Data.TaggedEnum<{
   Converted: { readonly converted: Converted };
-  ConvertFailed: {};
+  ConvertFailed: { readonly reason: ConvertFailure };
   Confirmed: {};
   ItemUploaded: { readonly key: ItemKey };
   UploadFailed: { readonly reason: UploadFailure };
@@ -156,18 +183,20 @@ const next = (status: BookStatus, event: BookEvent): BookStatus => {
         },
         unchanged,
       ),
-    ConvertFailed: () =>
+    ConvertFailed: ({ reason }) =>
       BookStatus.matchOrElse(
         status,
-        { Converting: ({ confirmed }) => ConvertFailed.make({ confirmed }) },
+        { Converting: ({ confirmed }) => ConvertFailed.make({ confirmed, reason }) },
         unchanged,
       ),
+    // A sheet can send an article its offline phone could not fetch yet. It retries once online.
     Confirmed: () =>
       BookStatus.matchOrElse(
         status,
         {
           Converting: () => Converting.make({ confirmed: true }),
           Ready: ({ converted }) => uploading(converted, []),
+          ConvertFailed: ({ reason }) => ConvertFailed.make({ confirmed: true, reason }),
         },
         unchanged,
       ),
@@ -286,6 +315,14 @@ export const canRetry = (status: BookStatus) =>
     () => false,
   );
 
+/** A sent article whose page could not be reached, which converts again once the phone is online. */
+export const waitsForConnection = (status: BookStatus) =>
+  BookStatus.matchOrElse(
+    status,
+    { ConvertFailed: ({ reason }) => reason === "unreachable" },
+    () => false,
+  );
+
 /** Books with work left on the phone: a send to convert or upload. */
 export const isInFlight = (status: BookStatus) =>
   BookStatus.matchOrElse(
@@ -331,7 +368,7 @@ export const itemNameOf = (sharedName: string, format: BookFormat) => {
 
 /** A book the Kindle reads as shared, with the cover an AZW3 carries. */
 export const sentAsShared = (
-  source: Source,
+  source: FileSource,
   name: ItemName,
   thumbnail: Option.Option<ItemName>,
 ): Converted => ({
@@ -343,9 +380,24 @@ export const sentAsShared = (
   convertedIn: Option.none(),
 });
 
-/** The title and author to show, from the book's metadata once converted and its file name before. */
+// The scheme keeps out links an app cannot fetch. Trailing punctuation is the sentence's, not the link's.
+const LINK = /https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]'}]/i;
+
+/** The link in shared text, as from a browser's Share, which may also carry a title or a comment. */
+export const articleUrlOf = (text: string) => Option.fromNullishOr(LINK.exec(text)?.[0]);
+
+/** The link's site, as "example.com". */
+export const siteOf = (url: string) => /^https?:\/\/(?:www\.)?([^/?#:]+)/i.exec(url)?.[1] ?? url;
+
+/**
+ * The title and author to show, from the book's metadata once converted, and before that, the file
+ * name or the article's shared title.
+ */
 export const labelOf = (book: Book) =>
   Option.match(convertedOf(book.status), {
-    onNone: () => ({ title: stem(book.source.name), author: "" }),
+    onNone: () => ({
+      title: book.source.format === "article" ? book.source.name : stem(book.source.name),
+      author: "",
+    }),
     onSome: ({ title, author }) => ({ title, author }),
   });

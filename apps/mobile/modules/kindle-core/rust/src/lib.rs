@@ -1,4 +1,5 @@
-//! EPUB -> Kindle conversion for the Android app, exported to TypeScript through uniffi.
+//! EPUB and web article -> Kindle conversion for the Android app, exported to TypeScript through
+//! uniffi.
 //!
 //! One call does what the stock-reader Kindle needs: a KF8 `.azw3` tagged EBOK with an ASIN
 //! (EXTH 113 + 501, required for lock-screen covers) plus the exact thumbnail file the firmware
@@ -13,15 +14,19 @@ use std::path::{Path, PathBuf};
 
 use kindling::{epub, extracted::ExtractedEpub, mobi, mobi_rewrite};
 
+mod article;
+
 uniffi::setup_scaffolding!();
 
 #[derive(Debug, uniffi::Record)]
 pub struct Converted {
     /// `<out_dir>/<Title - Author>.azw3`
     pub book_path: String,
-    /// The firmware's file name for this book's cover: `thumbnail_<asin>_EBOK_portrait.jpg`.
-    pub thumbnail_name: String,
-    pub thumbnail_path: String,
+    /// The firmware's file name for this book's cover: `thumbnail_<asin>_EBOK_portrait.jpg`. None
+    /// for a book without a cover, which is built as a PDOC: an EBOK without its thumbnail would
+    /// get Amazon's "No image available" placeholder.
+    pub thumbnail_name: Option<String>,
+    pub thumbnail_path: Option<String>,
     pub title: String,
     pub author: String,
 }
@@ -43,6 +48,11 @@ pub enum ConvertError {
     Thumbnail(String),
     #[error("i/o error: {0}")]
     Io(String),
+    /// No answer from the article's site, as when the phone is offline.
+    #[error("could not reach the page: {0}")]
+    Fetch(String),
+    #[error("could not read the page as an article: {0}")]
+    Article(String),
 }
 
 /// Convert `epub_path` into an EBOK AZW3 and its device thumbnail, both written to `out_dir`.
@@ -52,6 +62,20 @@ pub enum ConvertError {
 #[uniffi::export]
 pub async fn convert_epub(epub_path: String, out_dir: String) -> Result<Converted, ConvertError> {
     off_thread(move |cancelled| convert(Path::new(&epub_path), Path::new(&out_dir), cancelled)).await
+}
+
+/// Fetch the web article at `url` and convert it like `convert_epub`: its title, byline, text,
+/// and images, with the page's preview image as the cover.
+#[uniffi::export]
+pub async fn convert_article(url: String, out_dir: String) -> Result<Converted, ConvertError> {
+    off_thread(move |cancelled| {
+        let out_dir = Path::new(&out_dir);
+        let source = out_dir.join(".article");
+        let result = article::write(&url, &source, cancelled).and_then(|opf| build(&opf, out_dir, cancelled));
+        let _ = std::fs::remove_dir_all(&source);
+        result
+    })
+    .await
 }
 
 /// Write the device thumbnail of an existing AZW3 (one with EXTH 113 + 501, as EBOK books have)
@@ -106,6 +130,7 @@ fn convert(epub_path: &Path, out_dir: &Path, cancelled: &dyn Fn() -> bool) -> Re
 fn build(opf_path: &Path, out_dir: &Path, cancelled: &dyn Fn() -> bool) -> Result<Converted, Stop> {
     let extracted = kindling(ConvertError::Epub, || ExtractedEpub::from_opf_path(opf_path))?;
     let (title, author) = (extracted.opf.title.clone(), extracted.opf.author.clone());
+    let has_cover = extracted.opf.get_cover_image_href().is_some();
     checkpoint(cancelled)?;
 
     std::fs::create_dir_all(out_dir).map_err(io)?;
@@ -124,7 +149,9 @@ fn build(opf_path: &Path, out_dir: &Path, cancelled: &dyn Fn() -> bool) -> Resul
             true,         // no_hd_images: the PW3 screen doesn't need the HD container
             false,        // creator_tag
             true,         // kf8_only: .azw3
-            Some("EBOK"), // doc_type: EBOK + EXTH 113 is what gives a lock-screen cover
+            // EBOK + EXTH 113 is what gives a lock-screen cover. Without one, a PDOC gets the
+            // firmware's own title tile.
+            Some(if has_cover { "EBOK" } else { "PDOC" }),
             true,         // kindle_limits (CLI default; books only warn)
             true,         // self_check: post-build readback
             false,        // kindlegen_parity (comics only)
@@ -135,11 +162,13 @@ fn build(opf_path: &Path, out_dir: &Path, cancelled: &dyn Fn() -> bool) -> Resul
     })?;
 
     // A failed or cancelled conversion leaves nothing in `out_dir` for the app to clean up.
-    let thumb = checkpoint(cancelled).and_then(|()| Ok(write_thumbnail(&book_path, out_dir)?));
+    let thumb = checkpoint(cancelled).and_then(|()| Ok(if has_cover { Some(write_thumbnail(&book_path, out_dir)?) } else { None }));
     let thumb = thumb.and_then(|thumb| match checkpoint(cancelled) {
         Ok(()) => Ok(thumb),
         Err(stop) => {
-            let _ = std::fs::remove_file(&thumb.path);
+            if let Some(thumb) = thumb {
+                let _ = std::fs::remove_file(&thumb.path);
+            }
             Err(stop)
         }
     });
@@ -149,8 +178,8 @@ fn build(opf_path: &Path, out_dir: &Path, cancelled: &dyn Fn() -> bool) -> Resul
 
     Ok(Converted {
         book_path: path_string(book_path),
-        thumbnail_name: thumb.name,
-        thumbnail_path: thumb.path,
+        thumbnail_name: thumb.as_ref().map(|t| t.name.clone()),
+        thumbnail_path: thumb.map(|t| t.path),
         title,
         author,
     })
@@ -266,6 +295,112 @@ mod tests {
         path
     }
 
+    fn png(width: u32, height: u32) -> Vec<u8> {
+        let mut png = Vec::new();
+        image::RgbImage::from_pixel(width, height, image::Rgb([30, 90, 200]))
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        png
+    }
+
+    /// Serves `routes` (path -> content type and body) on localhost, 404 for anything else, and
+    /// returns the base URL.
+    fn serve(routes: Vec<(&'static str, &'static str, Vec<u8>)>) -> String {
+        use std::io::{BufRead, BufReader};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let mut stream = stream.unwrap();
+                let mut request = String::new();
+                BufReader::new(&stream).read_line(&mut request).unwrap();
+                let path = request.split_whitespace().nth(1).unwrap_or("/").to_owned();
+                let route = routes.iter().find(|(p, _, _)| *p == path);
+                let (status, content_type, body) = route.map_or(("404 Not Found", "text/plain", &b""[..]), |(_, t, b)| ("200 OK", *t, b));
+                let head = format!("HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+                let _ = stream.write_all(head.as_bytes()).and_then(|()| stream.write_all(body));
+            }
+        });
+        base
+    }
+
+    fn article_page(head: &str, figure: &str) -> Vec<u8> {
+        let paragraph = "<p>The river had been rising for three days before anyone in the village thought to move the boats, and by then the current was strong enough to pull a grown man off his feet.</p>";
+        format!(
+            r#"<!DOCTYPE html><html lang="en"><head><title>Flood Season | The Gazette</title>{head}
+            <meta property="og:title" content="Flood Season"/><meta name="author" content="Ada Byline"/></head>
+            <body><nav><a href="/">Home</a><a href="/news">News</a></nav>
+            <article><h1>Flood Season</h1>{figure}{}</article><footer>Subscribe today</footer></body></html>"#,
+            paragraph.repeat(8)
+        )
+        .into_bytes()
+    }
+
+    #[test]
+    fn writes_an_article_with_its_images_as_jpegs() {
+        let dir = Scratch::new("article-write");
+        let base = serve(vec![
+            ("/story", "text/html; charset=utf-8", article_page(
+                r#"<meta property="og:image" content="/preview.png"/>"#,
+                r#"<figure><img src="/figure.png" alt="The river"/></figure><img src="/gone.png"/>"#,
+            )),
+            ("/preview.png", "image/png", png(1200, 630)),
+            ("/figure.png", "image/png", png(1600, 900)),
+        ]);
+        let opf = article::write(&format!("{base}/story"), &dir.0, &|| false).unwrap();
+        let xhtml = std::fs::read_to_string(dir.0.join("article.xhtml")).unwrap();
+        assert!(xhtml.contains(r#"src="images/1.jpg""#), "{xhtml}");
+        assert!(!xhtml.contains("gone.png") && !xhtml.contains("Subscribe today"), "{xhtml}");
+        let figure = image::open(dir.0.join("images/1.jpg")).unwrap();
+        assert_eq!((figure.width(), figure.height()), (1072, 603), "scaled to the Kindle's width");
+        assert!(std::fs::read(dir.0.join("cover.jpg")).unwrap().starts_with(&[0xFF, 0xD8]));
+        let opf = std::fs::read_to_string(opf).unwrap();
+        assert!(opf.contains("<dc:title>Flood Season</dc:title>") && opf.contains("<dc:creator>Ada Byline</dc:creator>"), "{opf}");
+    }
+
+    #[test]
+    fn converts_an_article_into_a_book_with_its_cover() {
+        let dir = Scratch::new("article-convert");
+        let base = serve(vec![
+            ("/story", "text/html", article_page(r#"<meta property="og:image" content="/preview.png"/>"#, "")),
+            ("/preview.png", "image/png", png(1200, 630)),
+        ]);
+        let out = dir.0.join("out");
+        let converted = pollster::block_on(convert_article(format!("{base}/story"), path_string(out.clone()))).unwrap();
+        assert_eq!((converted.title.as_str(), converted.author.as_str()), ("Flood Season", "Ada Byline"));
+        assert!(converted.thumbnail_name.unwrap().ends_with("_EBOK_portrait.jpg"));
+        let mut files = dir.files("out");
+        files.sort();
+        assert_eq!(files.len(), 2, "the book and its thumbnail, without the unpacked article: {files:?}");
+    }
+
+    #[test]
+    fn an_article_without_images_is_a_personal_document_without_a_thumbnail() {
+        let dir = Scratch::new("article-plain");
+        let base = serve(vec![("/story", "text/html", article_page("", ""))]);
+        let converted = pollster::block_on(convert_article(format!("{base}/story"), path_string(dir.0.join("out")))).unwrap();
+        assert_eq!(converted.thumbnail_name, None);
+        assert!(converted.book_path.ends_with("/Flood Season - Ada Byline.azw3"));
+    }
+
+    #[test]
+    fn an_unreachable_page_is_a_fetch_error() {
+        let dir = Scratch::new("article-offline");
+        // Bound and dropped, so nothing listens there.
+        let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let result = pollster::block_on(convert_article(format!("http://127.0.0.1:{port}/story"), path_string(dir.0.join("out"))));
+        assert!(matches!(result, Err(ConvertError::Fetch(_))), "{result:?}");
+        assert!(dir.files("out").is_empty());
+    }
+
+    #[test]
+    fn a_missing_page_is_an_article_error() {
+        let dir = Scratch::new("article-missing");
+        let base = serve(vec![]);
+        let result = pollster::block_on(convert_article(format!("{base}/story"), path_string(dir.0.join("out"))));
+        assert!(matches!(result, Err(ConvertError::Article(ref message)) if message.contains("404")), "{result:?}");
+    }
+
     #[test]
     fn file_stem_is_safe_and_readable() {
         assert_eq!(file_stem("Memories of Ice: Book 3", "Steven Erikson"), "Memories of Ice_ Book 3 - Steven Erikson");
@@ -280,8 +415,9 @@ mod tests {
         let converted = pollster::block_on(convert_epub(path_string(epub), path_string(out))).unwrap();
         assert_eq!((converted.title.as_str(), converted.author.as_str()), ("Fixture", "Tester"));
         assert!(converted.book_path.ends_with("/Fixture - Tester.azw3"));
-        assert!(converted.thumbnail_name.starts_with("thumbnail_") && converted.thumbnail_name.ends_with("_EBOK_portrait.jpg"));
-        assert!(std::fs::read(&converted.thumbnail_path).unwrap().starts_with(&[0xFF, 0xD8]));
+        let thumbnail_name = converted.thumbnail_name.unwrap();
+        assert!(thumbnail_name.starts_with("thumbnail_") && thumbnail_name.ends_with("_EBOK_portrait.jpg"));
+        assert!(std::fs::read(converted.thumbnail_path.unwrap()).unwrap().starts_with(&[0xFF, 0xD8]));
         assert_eq!(dir.files("source"), ["book.epub"], "kindling's extraction is cleaned up");
     }
 
@@ -351,8 +487,8 @@ mod tests {
         let epub = fixture_epub(&dir.0);
         let converted = pollster::block_on(convert_epub(path_string(epub), path_string(dir.0.join("book")))).unwrap();
         let thumb = pollster::block_on(device_thumbnail(converted.book_path, path_string(dir.0.join("thumbs")))).unwrap();
-        assert_eq!(thumb.name, converted.thumbnail_name);
-        assert_eq!(std::fs::read(thumb.path).unwrap(), std::fs::read(converted.thumbnail_path).unwrap());
+        assert_eq!(Some(thumb.name), converted.thumbnail_name);
+        assert_eq!(std::fs::read(thumb.path).unwrap(), std::fs::read(converted.thumbnail_path.unwrap()).unwrap());
     }
 
     #[test]

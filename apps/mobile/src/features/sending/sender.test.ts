@@ -55,6 +55,21 @@ const epub = {
   mimeType: Option.some("application/epub+zip"),
 };
 
+const ARTICLE = ItemName.make("Flood Season - Ada Byline.azw3");
+
+const article = { url: "https://example.com/flood-season", title: Option.some("Flood Season") };
+
+const articleConverted = (outDir: string) =>
+  Effect.succeed({
+    bookPath: `${outDir}/${ARTICLE}`,
+    thumbnailName: THUMBNAIL,
+    thumbnailPath: `${outDir}/${THUMBNAIL}`,
+    title: "Flood Season",
+    author: "Ada Byline",
+  });
+
+const offline = new ConvertError({ stage: "Fetch", message: "no route to host" });
+
 const azw3 = {
   uri: "content://downloads/2",
   name: "House of Chains - Steven Erikson.azw3",
@@ -63,6 +78,7 @@ const azw3 = {
 
 interface Overrides {
   readonly convertEpub?: KindleCore["Service"]["convertEpub"];
+  readonly convertArticle?: KindleCore["Service"]["convertArticle"];
   readonly deviceThumbnail?: KindleCore["Service"]["deviceThumbnail"];
   /** Whether the book files on this phone are gone, as after the user cleared app storage. */
   readonly filesMissing?: boolean;
@@ -154,6 +170,7 @@ const world = (
               title: "House of Chains",
               author: "Steven Erikson",
             })),
+        convertArticle: overrides.convertArticle ?? ((_, outDir) => articleConverted(outDir)),
         deviceThumbnail:
           overrides.deviceThumbnail ??
           ((_, outDir) => Effect.succeed({ name: THUMBNAIL, path: `${outDir}/${THUMBNAIL}` })),
@@ -404,6 +421,121 @@ describe("Sender", () => {
     }),
   );
 
+  it.effect("sends a book without a cover by itself", () =>
+    Effect.gen(function* () {
+      const phone = yield* world([], [], {
+        convertEpub: (_, outDir) =>
+          Effect.succeed({ bookPath: `${outDir}/${BOOK}`, title: "House of Chains", author: "" }),
+      });
+
+      yield* Effect.gen(function* () {
+        const id = yield* Sender.use((sender) => sender.add(epub, true));
+
+        yield* until(id, "Waiting");
+
+        assert.deepStrictEqual(yield* Ref.get(phone.uploads), [BOOK]);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("converts a shared article from its page and sends it", () =>
+    Effect.gen(function* () {
+      const fetched = yield* Ref.make<ReadonlyArray<string>>([]);
+
+      const phone = yield* world([], [], {
+        convertArticle: (url, outDir) =>
+          Ref.update(fetched, (all) => [...all, url]).pipe(
+            Effect.andThen(articleConverted(outDir)),
+          ),
+      });
+
+      yield* Effect.gen(function* () {
+        const id = yield* Sender.use((sender) => sender.addArticle(article, true));
+
+        yield* until(id, "Waiting");
+
+        assert.deepStrictEqual(yield* Ref.get(fetched), [article.url]);
+        assert.deepStrictEqual(yield* Ref.get(phone.uploads), [THUMBNAIL, ARTICLE]);
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("fetches an article again once the phone is back online", () =>
+    Effect.gen(function* () {
+      const reachable = yield* Ref.make(false);
+
+      const phone = yield* world([], [], {
+        convertArticle: (_, outDir) =>
+          Effect.flatMap(Ref.get(reachable), (up) =>
+            up ? articleConverted(outDir) : Effect.fail(offline),
+          ),
+      });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.addArticle(article, true);
+
+        yield* until(id, "ConvertFailed");
+        yield* Ref.set(reachable, true);
+        yield* sender.refresh;
+        yield* until(id, "Waiting");
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("keeps an article sent from its sheet while offline, and sends it once online", () =>
+    Effect.gen(function* () {
+      const reachable = yield* Ref.make(false);
+
+      const phone = yield* world([], [], {
+        convertArticle: (_, outDir) =>
+          Effect.flatMap(Ref.get(reachable), (up) =>
+            up ? articleConverted(outDir) : Effect.fail(offline),
+          ),
+      });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.addArticle(article, false);
+
+        yield* until(id, "ConvertFailed");
+        yield* sender.confirm(id);
+        // The sheet closes after Send, which discards only a book the user never sent.
+        yield* sender.discard(id);
+        yield* Ref.set(reachable, true);
+        yield* sender.refresh;
+        yield* until(id, "Waiting");
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
+  it.effect("never fetches a page again when it has no article", () =>
+    Effect.gen(function* () {
+      const calls = yield* Ref.make(0);
+
+      const phone = yield* world([], [], {
+        convertArticle: () =>
+          Ref.update(calls, (n) => n + 1).pipe(
+            Effect.andThen(Effect.fail(new ConvertError({ stage: "Article", message: "404" }))),
+          ),
+      });
+
+      yield* Effect.gen(function* () {
+        const sender = yield* Sender;
+        const id = yield* sender.addArticle(article, true);
+
+        yield* until(id, "ConvertFailed");
+        yield* sender.refresh;
+
+        assert.strictEqual(yield* Ref.get(calls), 1);
+        assert.deepStrictEqual(
+          yield* statusOf(id),
+          Option.some(ConvertFailed.make({ confirmed: true, reason: "invalid" })),
+        );
+      }).pipe(Effect.provide(phone.layer));
+    }),
+  );
+
   it.effect("waits at Ready for Send, then uploads", () =>
     Effect.gen(function* () {
       const phone = yield* world([]);
@@ -497,7 +629,9 @@ describe("Sender", () => {
 
   it.effect("drops a failed conversion nobody sent once its sheet is gone", () =>
     Effect.gen(function* () {
-      const phone = yield* world([storedBook("unsent", ConvertFailed.make({ confirmed: false }))]);
+      const phone = yield* world([
+        storedBook("unsent", ConvertFailed.make({ confirmed: false, reason: "invalid" })),
+      ]);
 
       yield* Effect.scoped(Layer.build(phone.layer));
 

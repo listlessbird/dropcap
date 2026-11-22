@@ -129,6 +129,10 @@ extern "C" {
     uint64_t callback_data, 
     UniffiForeignFutureResultVoid result
     );
+    /*handle*/ uint64_t uniffi_kindle_core_fn_func_convert_article(
+        RustBuffer url, 
+        RustBuffer out_dir
+    );
     /*handle*/ uint64_t uniffi_kindle_core_fn_func_convert_epub(
         RustBuffer epub_path, 
         RustBuffer out_dir
@@ -333,6 +337,8 @@ extern "C" {
     void ffi_kindle_core_rust_future_complete_void(
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
+    );
+    uint16_t uniffi_kindle_core_checksum_func_convert_article(
     );
     uint16_t uniffi_kindle_core_checksum_func_convert_epub(
     );
@@ -1838,6 +1844,14 @@ NativeKindleCore::NativeKindleCore(
             return this->cpp_uniffi_internal_fn_func_ffi__read_string_from_buffer(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_kindle_core_fn_func_convert_article"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_kindle_core_fn_func_convert_article"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_kindle_core_fn_func_convert_article(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_kindle_core_fn_func_convert_epub"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_kindle_core_fn_func_convert_epub"),
@@ -2238,6 +2252,14 @@ NativeKindleCore::NativeKindleCore(
             return this->cpp_ffi_kindle_core_rust_future_complete_void(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_kindle_core_checksum_func_convert_article"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_kindle_core_checksum_func_convert_article"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_kindle_core_checksum_func_convert_article(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_kindle_core_checksum_func_convert_epub"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_kindle_core_checksum_func_convert_epub"),
@@ -2418,6 +2440,13 @@ jsi::Value NativeKindleCore::cpp_uniffi_internal_fn_func_ffi__read_string_from_b
 }
 
 // Methods calling directly into the uniffi generated C API of the Rust crate.
+jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_fn_func_convert_article(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_kindle_core_fn_func_convert_article(uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_fn_func_convert_epub(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_kindle_core_fn_func_convert_epub(uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::kindle_core::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
         );
@@ -2803,6 +2832,13 @@ jsi::Value NativeKindleCore::cpp_ffi_kindle_core_rust_future_complete_void(jsi::
 
         
         return jsi::Value::undefined();
+}
+jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_checksum_func_convert_article(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_kindle_core_checksum_func_convert_article(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeKindleCore::cpp_uniffi_kindle_core_checksum_func_convert_epub(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_kindle_core_checksum_func_convert_epub(

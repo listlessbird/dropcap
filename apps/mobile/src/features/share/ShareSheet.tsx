@@ -17,12 +17,27 @@ import { fileSize } from "../../lib/units";
 import { booksState } from "../../state/books";
 import { appAtomRegistry } from "../../state/atom-registry";
 import { BookCover } from "../library/BookCover";
-import { failureOf, FILE_UNREADABLE, FORMAT_LABEL, UNSUPPORTED_FILE } from "../library/libraryCopy";
-import { formatOf, labelOf, stem, type Book, type BookFormat, type BookId } from "../sending/book";
+import {
+  failureOf,
+  FILE_UNREADABLE,
+  FORMAT_LABEL,
+  UNSUPPORTED_FILE,
+  UNSUPPORTED_TEXT,
+} from "../library/libraryCopy";
+import {
+  formatOf,
+  labelOf,
+  siteOf,
+  stem,
+  waitsForConnection,
+  type Book,
+  type BookId,
+  type Source,
+} from "../sending/book";
 import { AppearanceProvider } from "../settings/appearance/AppearanceProvider";
-import { closeSheet, ShareOutcome, shareAtom, SharedFile } from "./shareState";
+import { articleOf, closeSheet, ShareOutcome, shareAtom, Shared } from "./shareState";
 
-const decodeSharedFile = Schema.decodeUnknownOption(SharedFile);
+const decodeShared = Schema.decodeUnknownOption(Shared);
 
 /** The book, or the shared file before it is copied in: cover, title, author, and format and size. */
 function Summary(props: {
@@ -51,11 +66,16 @@ function Summary(props: {
   );
 }
 
-const detailOf = (format: Option.Option<BookFormat>, bytes: Option.Option<number>) =>
-  [
-    ...Option.toArray(Option.map(format, (f) => FORMAT_LABEL[f])),
-    ...Option.toArray(Option.map(bytes, fileSize)),
-  ].join(" · ");
+/** "EPUB · 9.1 MB", or "Article · example.com". */
+const detailOf = (format: Option.Option<Source["format"]>, more: Option.Option<string>) =>
+  [...Option.toArray(Option.map(format, (f) => FORMAT_LABEL[f])), ...Option.toArray(more)].join(
+    " · ",
+  );
+
+const sourceDetail = (source: Source) =>
+  source.format === "article"
+    ? detailOf(Option.some(source.format), Option.some(siteOf(source.url)))
+    : detailOf(Option.some(source.format), Option.some(fileSize(source.bytes)));
 
 function Message(props: {
   readonly title: string;
@@ -127,23 +147,24 @@ function Confirm(props: {
 
   const { title, author } = labelOf(shown.value);
   const { source, status } = shown.value;
-  const failure = failureOf(status);
+  const failure = failureOf(shown.value);
+  const actions = <Actions send={Option.some(() => props.send(props.id))} close={props.close} />;
 
   return (
     <>
-      <Summary
-        book={shown.value}
-        title={title}
-        author={author}
-        detail={detailOf(Option.some(source.format), Option.some(source.bytes))}
-      />
+      <Summary book={shown.value} title={title} author={author} detail={sourceDetail(source)} />
       {Option.isSome(failure) ? (
         <>
           <ErrorBanner message={failure.value} />
-          <Button tone="text" fullWidth label="Cancel" onPress={() => void props.close()} />
+          {/* An article the phone could not fetch offline still sends, once it is online. */}
+          {waitsForConnection(status) ? (
+            actions
+          ) : (
+            <Button tone="text" fullWidth label="Cancel" onPress={() => void props.close()} />
+          )}
         </>
       ) : (
-        <Actions send={Option.some(() => props.send(props.id))} close={props.close} />
+        actions
       )}
     </>
   );
@@ -174,6 +195,7 @@ function Content(props: {
     onNone: () => <Message title={name} message={FILE_UNREADABLE} close={close} />,
     onSome: Match.valueTags({
       UnsupportedFile: () => <Message title={name} message={UNSUPPORTED_FILE} close={close} />,
+      UnsupportedText: () => <Message title={name} message={UNSUPPORTED_TEXT} close={close} />,
       NotConnected: () => (
         <Message
           title="Connect your Kindle"
@@ -199,7 +221,7 @@ function Content(props: {
  * The sheet shows from the first frame, so the app that shared never looks frozen behind the
  * transparent activity while a large file copies in.
  */
-function ShareSheet(props: { readonly shared: SharedFile }) {
+function ShareSheet(props: { readonly shared: Shared }) {
   const { shared } = props;
   const outcome = useAtomValue(shareAtom(shared));
   const confirm = useAtomSet(booksState.confirmAtom, { mode: "promise" });
@@ -225,18 +247,25 @@ function ShareSheet(props: { readonly shared: SharedFile }) {
     void close();
   };
 
-  const name = shared.name ?? "This file";
+  const name = shared.name ?? shared.subject ?? (shared.uri ? "This file" : "Shared text");
+
+  const preview = Option.match(articleOf(shared), {
+    onSome: ({ url, title }) => ({
+      title: Option.getOrElse(title, () => url),
+      detail: detailOf(Option.some("article"), Option.some(siteOf(url))),
+    }),
+    onNone: () => ({
+      title: stem(name),
+      detail: detailOf(
+        formatOf(name, Option.fromNullishOr(shared.mimeType)),
+        Option.map(Option.fromNullishOr(shared.bytes), fileSize),
+      ),
+    }),
+  });
 
   const pending = (
     <>
-      <Summary
-        title={stem(name)}
-        author=""
-        detail={detailOf(
-          formatOf(name, Option.fromNullishOr(shared.mimeType)),
-          Option.fromNullishOr(shared.bytes),
-        )}
-      />
+      <Summary title={preview.title} author="" detail={preview.detail} />
       <Actions send={Option.none()} close={close} />
     </>
   );
@@ -252,9 +281,9 @@ function ShareSheet(props: { readonly shared: SharedFile }) {
   );
 }
 
-/** The root ShareActivity renders over the app that shared. Its props are the shared file. */
-export function ShareRoot(props: typeof SharedFile.Encoded) {
-  const shared = decodeSharedFile(props).pipe(Option.getOrElse((): SharedFile => ({})));
+/** The root ShareActivity renders over the app that shared. Its props are the shared file or text. */
+export function ShareRoot(props: typeof Shared.Encoded) {
+  const shared = decodeShared(props).pipe(Option.getOrElse((): Shared => ({})));
 
   return (
     <RegistryContext value={appAtomRegistry}>

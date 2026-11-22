@@ -36,6 +36,7 @@ import {
   leftInMailbox,
   sentAsShared,
   transition,
+  waitsForConnection,
   type Book,
   type Converted,
 } from "./book";
@@ -45,6 +46,13 @@ export interface IncomingFile {
   readonly uri: string;
   readonly name: string;
   readonly mimeType: Option.Option<string>;
+}
+
+/** A link to a web article, shared as text. */
+export interface IncomingArticle {
+  readonly url: string;
+  /** The page title the browser shared with the link, shown until the article converts. */
+  readonly title: Option.Option<string>;
 }
 
 class FileMissing extends Schema.TaggedError<FileMissing>()("FileMissing", {}) {}
@@ -80,6 +88,11 @@ export class Sender extends Context.Service<
       file: IncomingFile,
       confirmed: boolean,
     ) => Effect.Effect<BookId, UnsupportedFile | BookFilesError | BookStoreError>;
+    /** Starts converting the article at once, fetching its page. Like `add`, without a copy. */
+    readonly addArticle: (
+      article: IncomingArticle,
+      confirmed: boolean,
+    ) => Effect.Effect<BookId, BookStoreError>;
     readonly confirm: (id: BookId) => Effect.Effect<void>;
     /** Forgets a book the user never sent, as the share sheet's Cancel does. */
     readonly discard: (id: BookId) => Effect.Effect<void>;
@@ -181,19 +194,33 @@ export const make = Effect.gen(function* () {
     ),
   );
 
+  // An article's page is fetched here, not when it is shared, so a share made offline still goes.
   const convert = Effect.fn("Sender.convert")(function* (id: BookId) {
-    yield* kindleCore.convertEpub(files.path(id, SOURCE_EPUB), files.path(id)).pipe(
+    const book = yield* current(id);
+
+    if (Option.isNone(book)) return;
+
+    const { source } = book.value;
+
+    const conversion =
+      source.format === "article"
+        ? kindleCore.convertArticle(source.url, files.path(id))
+        : kindleCore.convertEpub(files.path(id, SOURCE_EPUB), files.path(id));
+
+    yield* conversion.pipe(
       Effect.timed,
       Effect.flatMap(([took, output]) =>
         Effect.gen(function* () {
-          const book = yield* decodeItemName(basename(output.bookPath));
+          const name = yield* decodeItemName(basename(output.bookPath));
 
           const converted: Converted = {
             title: output.title,
             author: output.author,
-            book,
-            bookBytes: yield* files.size(id, book),
-            thumbnail: Option.some(yield* decodeItemName(output.thumbnailName)),
+            book: name,
+            bookBytes: yield* files.size(id, name),
+            thumbnail: yield* Effect.transposeOption(
+              Option.map(Option.fromNullishOr(output.thumbnailName), decodeItemName),
+            ),
             convertedIn: Option.some(took),
           };
 
@@ -207,7 +234,20 @@ export const make = Effect.gen(function* () {
           Cause.hasInterruptsOnly(cause)
             ? Effect.interrupt
             : Effect.logWarning("Could not convert a book.", cause).pipe(
-                Effect.andThen(apply(id, BookEvent.ConvertFailed())),
+                Effect.andThen(
+                  apply(
+                    id,
+                    BookEvent.ConvertFailed({
+                      reason: Option.exists(
+                        Cause.findErrorOption(cause),
+                        (error) =>
+                          Predicate.isTagged(error, "ConvertError") && error.stage === "Fetch",
+                      )
+                        ? "unreachable"
+                        : "invalid",
+                    }),
+                  ),
+                ),
               ),
         onSuccess: (converted) =>
           apply(id, BookEvent.Converted({ converted })).pipe(
@@ -383,7 +423,10 @@ export const make = Effect.gen(function* () {
     for (const book of (yield* SubscriptionRef.get(books)).values()) {
       const offline = BookStatus.matchOrElse(
         book.status,
-        { UploadFailed: ({ reason }) => reason === "unreachable" },
+        {
+          UploadFailed: ({ reason }) => reason === "unreachable",
+          ConvertFailed: (failed) => failed.confirmed && waitsForConnection(failed),
+        },
         () => false,
       );
 
@@ -432,6 +475,13 @@ export const make = Effect.gen(function* () {
     return BookId.make(`${time}-${salt}`);
   });
 
+  const start = Effect.fn("Sender.start")(function* (added: Book, confirmed: boolean) {
+    yield* put(confirmed ? transition(added, BookEvent.Confirmed()) : added);
+    yield* drive(added.id);
+
+    return added.id;
+  });
+
   return Sender.of({
     books: Stream.map(SubscriptionRef.changes(books), (all) => [...all.values()]),
     progress: SubscriptionRef.changes(progress),
@@ -456,19 +506,32 @@ export const make = Effect.gen(function* () {
 
       const source = { name: file.name, format, bytes };
 
-      const added: Book = {
-        id,
-        addedAt: yield* DateTime.now,
-        source,
-        status: isConvertible(format)
-          ? BookStatus.cases.Converting.make({ confirmed })
-          : BookStatus.cases.Ready.make({ converted: sentAsShared(source, name, thumbnail) }),
-      };
-
-      yield* put(confirmed ? transition(added, BookEvent.Confirmed()) : added);
-      yield* drive(id);
-
-      return id;
+      return yield* start(
+        {
+          id,
+          addedAt: yield* DateTime.now,
+          source,
+          status: isConvertible(format)
+            ? BookStatus.cases.Converting.make({ confirmed })
+            : BookStatus.cases.Ready.make({ converted: sentAsShared(source, name, thumbnail) }),
+        },
+        confirmed,
+      );
+    }),
+    addArticle: Effect.fn("Sender.addArticle")(function* (article, confirmed) {
+      return yield* start(
+        {
+          id: yield* newId,
+          addedAt: yield* DateTime.now,
+          source: {
+            name: Option.getOrElse(article.title, () => article.url),
+            format: "article",
+            url: article.url,
+          },
+          status: BookStatus.cases.Converting.make({ confirmed }),
+        },
+        confirmed,
+      );
     }),
     confirm: (id) => logFailure(apply(id, BookEvent.Confirmed()).pipe(Effect.andThen(drive(id)))),
     discard: (id) =>

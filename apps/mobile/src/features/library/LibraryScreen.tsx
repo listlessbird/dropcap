@@ -174,7 +174,7 @@ export function LibraryScreen() {
           variant="plain"
           icon="book"
           title="No books yet"
-          detail="Share an EPUB, AZW3, PDF, or TXT file from any app. It arrives the next time your Kindle wakes."
+          detail="Share an EPUB, AZW3, PDF, or TXT file, or a link to an article, from any app. It arrives the next time your Kindle wakes."
           action={
             <Button
               tone="secondary"
