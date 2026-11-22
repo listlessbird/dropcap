@@ -1,0 +1,73 @@
+{
+  "items": [
+    {
+      "name": "Dropcap",
+      "priority": 0,
+      "items": [
+        {
+          "name": "Start",
+          "priority": 1,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "start",
+          "exitmenu": false
+        },
+        {
+          "name": "Stop",
+          "priority": 2,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "stop",
+          "exitmenu": false
+        },
+        {
+          "name": "Start Tailscale",
+          "priority": 3,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "ssh-start",
+          "exitmenu": false
+        },
+        {
+          "name": "Tailscale status",
+          "priority": 4,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "ssh-status",
+          "exitmenu": false
+        },
+        {
+          "name": "Stop Tailscale",
+          "priority": 5,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "ssh-stop",
+          "exitmenu": false
+        },
+        {
+          "name": "Join Wi-Fi from network.conf",
+          "priority": 6,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "wifi-join",
+          "exitmenu": false
+        },
+        {
+          "name": "Wi-Fi diagnostics",
+          "priority": 7,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "wifi-diag",
+          "exitmenu": false
+        },
+        {
+          "name": "Start on boot",
+          "priority": 8,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "install-boot",
+          "exitmenu": false
+        },
+        {
+          "name": "Don't start on boot",
+          "priority": 9,
+          "action": "/mnt/us/extensions/dropcap/dropcap.sh",
+          "params": "uninstall-boot",
+          "exitmenu": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+#!/bin/sh
+# Laptop helper for the Kindle. Reads tokens from ~/.config/kindle-mailbox/secrets.env, never prints them.
+# Usage: kindle/kd status          the Kindle's last check-in, device report and commands, from the Worker
+#        kindle/kd logs            the end of dropcap.log, uploaded on every wake
+#        kindle/kd rescan          queue a rescan; proves the command path once it settles `ok`
+#        kindle/kd ssh [command]   root shell over Tailscale SSH (the Kindle must be awake)
+#        kindle/kd deploy          push kindle/dropcap over SSH, or over USB when the Kindle is mounted
+set -eu
+HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+WORKER=${KD_WORKER:-https://kindle-mailbox.listlessbird.workers.dev}
+SECRETS=$HOME/.config/kindle-mailbox/secrets.env
+MOUNT=/media/$USER/Kindle
+EXT=/mnt/us/extensions/dropcap
+# What the repo owns. Binaries, tokens, Tailscale state and logs stay on the device.
+FILES="dropcap.sh config.xml menu.json lib/mailbox.sh lib/tailscale.sh lib/wifi.sh lib/boot.sh"
+
+# curl the Worker as the app. The token goes to curl on stdin, so it never appears in `ps` output.
+app() {
+	token=$(sed -n 's/^APP_TOKEN=//p' "$SECRETS")
+	printf 'header = "Authorization: Bearer %s"\n' "$token" | curl -sf --max-time 60 -K - "$@"
+}
+
+kssh() {
+	ssh -o BatchMode=yes -o ConnectTimeout=20 root@kindle "$@"
+}
+
+case "${1:-}" in
+	status)
+		app "$WORKER/status" | jq '{checkedInAt, device: (.device | if . then del(.books) + {books: [.books[].title]} else . end), commands}'
+		;;
+	logs) app "$WORKER/reports/dropcap.log" ;;
+	rescan) app -X POST -H 'content-type: application/json' -d '{"command":{"_tag":"Rescan"}}' "$WORKER/commands" && echo ;;
+	ssh)
+		shift
+		kssh "$@"
+		;;
+	deploy)
+		# The Kindle's shell is busybox sh.
+		for f in $FILES; do
+			case "$f" in *.sh) busybox sh -n "$HERE/dropcap/$f" ;; esac
+		done
+		if [ -d "$MOUNT/extensions" ]; then
+			for f in $FILES; do
+				mkdir -p "$MOUNT/extensions/dropcap/${f%/*}" && cp "$HERE/dropcap/$f" "$MOUNT/extensions/dropcap/$f"
+			done
+			mkdir -p "$MOUNT/extensions/dropcap/run-once.d"
+			echo "$EXT/dropcap.sh start" > "$MOUNT/extensions/dropcap/run-once.d/restart.sh"
+			sync
+			echo "copied over USB; Dropcap restarts on the first wake after: udisksctl unmount -b /dev/sda1 && udisksctl power-off -b /dev/sda"
+		else
+			for f in $FILES; do
+				kssh "mkdir -p $EXT/lib && cat > $EXT/$f.new && mv $EXT/$f.new $EXT/$f" < "$HERE/dropcap/$f"
+			done
+			kssh "chmod +x $EXT/dropcap.sh && $EXT/dropcap.sh start"
+			echo "pushed over SSH and restarted delivery. Tailscale picks up lib/tailscale.sh when it restarts:"
+			echo "  kindle/kd ssh 'kill \$(cat /var/run/dropcap/tailscaled.pid)'   # the boot job brings it back within a minute"
+		fi
+		;;
+	*)
+		sed -n '3,7p' "$0" >&2
+		exit 2
+		;;
+esac

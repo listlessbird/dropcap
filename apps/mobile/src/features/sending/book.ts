@@ -359,7 +359,7 @@ export const formatOf = (name: string, mimeType: Option.Option<string>) =>
 /** The shared file's name without a format's extension, the title until conversion finds one. */
 export const stem = (name: string) => name.replace(EXTENSION, "");
 
-// What ts.sh's tab-separated listing and the Kindle's file system cannot take.
+// What dropcap.sh's tab-separated listing and the Kindle's file system cannot take.
 const UNSAFE_IN_NAME = /[\u0000-\u001f\u007f/\\:*?"<>|]/g;
 
 /** The shared file's name, made safe for the mailbox. EPUBs keep the converter's names instead. */

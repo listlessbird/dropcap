@@ -12,3 +12,11 @@ node_modules/
 __screenshots__/
 .repos/
 .alchemy/
+
+# Device-only files, if a copy of the Kindle's extension folder ever lands here: tokens, the Tailscale
+# binaries and enrollment, run-once scripts, network credentials.
+kindle/dropcap/mailbox.*
+kindle/dropcap/tailscale/
+kindle/dropcap/run-once.d/
+kindle/dropcap/network.conf
+kindle/dropcap/wifi-diag.txt
