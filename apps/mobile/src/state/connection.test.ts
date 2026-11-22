@@ -33,10 +33,17 @@ const mountState = (acceptedKey: string) =>
         MailboxClient.of({
           status: (connection) =>
             Redacted.value(connection.key) === acceptedKey
-              ? Effect.succeed({ checkedInAt: Option.none<DateTime.Utc>(), waiting: [] })
+              ? Effect.succeed({
+                  checkedInAt: Option.none<DateTime.Utc>(),
+                  waiting: [],
+                  device: Option.none(),
+                  commands: [],
+                })
               : Effect.fail(new MailboxError({ reason: "unauthorized", cause: null })),
           cancel: () => Effect.void,
           upload: () => Effect.die("Pairing never uploads."),
+          queue: () => Effect.die("Pairing never queues commands."),
+          dismiss: () => Effect.die("Pairing never dismisses commands."),
         }),
       ),
     );

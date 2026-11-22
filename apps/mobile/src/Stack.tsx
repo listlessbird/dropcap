@@ -10,27 +10,36 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAtomValue } from "@effect/atom-react";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
+import { View } from "react-native";
 
 import { IconButton } from "./components/ui/IconButton";
 import { ConnectScreen } from "./features/connect/ConnectScreen";
 import { EnterDetailsScreen } from "./features/connect/EnterDetailsScreen";
 import { ScanPairingCodeScreen } from "./features/connect/ScanPairingCodeScreen";
 import { ComponentCatalogScreen } from "./features/development/ComponentCatalogScreen";
+import { KindleScreen } from "./features/kindle/KindleScreen";
 import { BookScreen } from "./features/library/BookScreen";
 import { LibraryScreen } from "./features/library/LibraryScreen";
 import { useAppearance } from "./features/settings/appearance/AppearanceProvider";
 import { SettingsScreen } from "./features/settings/SettingsScreen";
 import { connectionAtom } from "./state/connection";
 
-function SettingsButton() {
+function LibraryHeaderButtons() {
   const navigation = useNavigation();
 
   return (
-    <IconButton
-      icon="settings"
-      accessibilityLabel="Settings"
-      onPress={() => navigation.navigate("Settings")}
-    />
+    <View className="flex-row">
+      <IconButton
+        icon="device-tablet"
+        accessibilityLabel="Kindle"
+        onPress={() => navigation.navigate("Kindle")}
+      />
+      <IconButton
+        icon="settings"
+        accessibilityLabel="Settings"
+        onPress={() => navigation.navigate("Settings")}
+      />
+    </View>
   );
 }
 
@@ -64,12 +73,17 @@ const RootStack = createNativeStackNavigator({
         Library: {
           screen: LibraryScreen,
           linking: "",
-          options: { title: "Dropcap", headerRight: SettingsButton },
+          options: { title: "Dropcap", headerRight: LibraryHeaderButtons },
         },
         Book: {
           screen: BookScreen,
           linking: "book/:id",
           options: { title: "" },
+        },
+        Kindle: {
+          screen: KindleScreen,
+          linking: "kindle",
+          options: { title: "Kindle" },
         },
         Settings: {
           screen: SettingsScreen,

@@ -1,6 +1,5 @@
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
 import Constants from "expo-constants";
@@ -16,6 +15,7 @@ import { ListRowLayout } from "../../components/ui/ListRowLayout";
 import { ListSection } from "../../components/ui/ListSection";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { relativeTime } from "../../lib/relativeTime";
+import { statusError } from "../library/libraryCopy";
 import { THEME_OPTIONS } from "../../lib/theme";
 import { ListToggleRow } from "../../components/ui/ListToggleRow";
 import { booksState } from "../../state/books";
@@ -28,12 +28,6 @@ const MODE_OPTIONS = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
 ] as const;
-
-const STATUS_ERROR = {
-  unauthorized: "This pairing code no longer works. Create a new one on your computer.",
-  unreachable: "Couldn't check on your Kindle. Check your connection and try again.",
-  unexpected: "Couldn't check on your Kindle. Try again in a few minutes.",
-} as const;
 
 function KindleSection() {
   const status = useAtomValue(booksState.kindleStatusAtom);
@@ -54,16 +48,7 @@ function KindleSection() {
     Option.getOrElse(() => (AsyncResult.isFailure(status) ? "Unknown" : "Checking")),
   );
 
-  const error = AsyncResult.matchWithError(status, {
-    onInitial: () => undefined,
-    onSuccess: () => undefined,
-    onDefect: () => STATUS_ERROR.unexpected,
-    onError: Match.valueTags({
-      MailboxError: (error) => STATUS_ERROR[error.reason],
-      NoSuchElementError: () => undefined,
-      MobileDatabaseError: () => STATUS_ERROR.unexpected,
-    }),
-  });
+  const error = statusError(status);
 
   return (
     <View className="gap-3">

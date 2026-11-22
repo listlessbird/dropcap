@@ -186,9 +186,18 @@ const world = (
       MailboxClient,
       MailboxClient.of({
         status: () =>
-          whenOnline(Effect.all({ checkedInAt: Ref.get(checkedInAt), waiting: Ref.get(waiting) })),
+          whenOnline(
+            Effect.all({
+              checkedInAt: Ref.get(checkedInAt),
+              waiting: Ref.get(waiting),
+              device: Effect.succeedNone,
+              commands: Effect.succeed([]),
+            }),
+          ),
         cancel: (_, id) =>
           whenOnline(Ref.update(waiting, (all) => all.filter((key) => key !== id))),
+        queue: () => Effect.die("Sending never queues commands."),
+        dismiss: () => Effect.die("Sending never dismisses commands."),
         upload: (_, name) =>
           whenOnline(
             Effect.gen(function* () {
