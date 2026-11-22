@@ -1,8 +1,12 @@
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
+import type * as Cause from "effect/Cause";
+import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import { AsyncResult } from "effect/reactivity";
 
-import type { MailboxErrorReason } from "../../lib/mailboxClient";
+import type { MailboxError, MailboxErrorReason } from "../../lib/mailboxClient";
+import type { MobileDatabaseError } from "../../persistence/mobile-database";
 import { relativeTime } from "../../lib/relativeTime";
 import { BookStatus, type Book, type ConvertFailure, type UploadFailure } from "../sending/book";
 
@@ -32,6 +36,27 @@ export const CANCEL_FAILED: Readonly<Record<MailboxErrorReason, string>> = {
   unexpected: "Couldn't cancel sending. Try again in a few minutes.",
   unauthorized: "This pairing code no longer works. Create a new one on your computer.",
 };
+
+const STATUS_ERROR: Readonly<Record<MailboxErrorReason, string>> = {
+  unauthorized: "This pairing code no longer works. Create a new one on your computer.",
+  unreachable: "Couldn't check on your Kindle. Check your connection and try again.",
+  unexpected: "Couldn't check on your Kindle. Try again in a few minutes.",
+};
+
+/** Why the last check on the Kindle failed. Nothing while unpaired: the app is leaving the screen. */
+export const statusError = <A>(
+  status: AsyncResult.AsyncResult<A, MailboxError | Cause.NoSuchElementError | MobileDatabaseError>,
+) =>
+  AsyncResult.matchWithError(status, {
+    onInitial: () => undefined,
+    onSuccess: () => undefined,
+    onDefect: () => STATUS_ERROR.unexpected,
+    onError: Match.valueTags({
+      MailboxError: (error) => STATUS_ERROR[error.reason],
+      NoSuchElementError: () => undefined,
+      MobileDatabaseError: () => STATUS_ERROR.unexpected,
+    }),
+  });
 
 export const FORMAT_LABEL = {
   epub: "EPUB",
@@ -112,7 +137,8 @@ export const librarySections = (books: ReadonlyArray<Book>) => {
 
 const QUIET_AFTER = Duration.days(1);
 
-const checkedInWhen = (at: DateTime.Utc, now: DateTime.Utc) => {
+/** "just now", "2 h ago", "on 12 Oct": a check-in time that reads mid-sentence. */
+export const checkedInWhen = (at: DateTime.Utc, now: DateTime.Utc) => {
   const when = relativeTime(at, now);
 
   if (when === "Just now" || when === "Yesterday") return when.toLowerCase();

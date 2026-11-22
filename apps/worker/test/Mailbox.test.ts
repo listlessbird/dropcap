@@ -13,7 +13,7 @@ import * as HttpClient from "effect/http/HttpClient";
 import * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as HttpApiClient from "effect/http-api/HttpApiClient";
 import Stack from "../alchemy.run.ts";
-import { ItemId, ItemName, MailboxApi } from "../src/Api.ts";
+import { BookPath, Command, type CommandId, ItemId, ItemName, MailboxApi } from "../src/Api.ts";
 
 const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
   providers: Cloudflare.providers(),
@@ -51,6 +51,39 @@ const kindle = (method: "GET" | "PUT" | "DELETE", path: string, as = kindleToken
     return yield* HttpClient.execute(
       HttpClientRequest.make(method)(`${url}${path}`).pipe(HttpClientRequest.bearerToken(token)),
     );
+  });
+
+// `curl --data-urlencode name=value ...`: repeated names, curl's default form content type.
+const kindleForm = (path: string, fields: ReadonlyArray<readonly [string, string]>) =>
+  Effect.gen(function* () {
+    const { url } = yield* stack;
+
+    return yield* HttpClient.execute(
+      HttpClientRequest.put(`${url}${path}`).pipe(
+        HttpClientRequest.bearerToken(yield* kindleToken),
+        HttpClientRequest.setBody(
+          HttpBody.text(
+            new URLSearchParams(fields.map(([name, value]) => [name, value])).toString(),
+            "application/x-www-form-urlencoded",
+          ),
+        ),
+      ),
+    );
+  });
+
+const pendingCommands = Effect.gen(function* () {
+  const response = yield* kindle("GET", "/commands/");
+  const lines = (yield* response.text).split("\n").filter(Boolean);
+
+  return lines.map((line) => line.split("\t"));
+});
+
+const outcomeOf = (id: CommandId) =>
+  Effect.gen(function* () {
+    const app = yield* appClient;
+    const { commands } = yield* app.app.status();
+
+    return commands.find((command) => command.id === id)?.outcome;
   });
 
 const listing = Effect.gen(function* () {
@@ -213,5 +246,129 @@ test(
     expect(
       (yield* kindle("DELETE", `/items/${encodeId(key)}`, Config.succeed("wrong"))).status,
     ).toBe(401);
+  }),
+);
+
+test(
+  "the Kindle runs queued commands in order and the app sees how each ended",
+  Effect.gen(function* () {
+    const app = yield* appClient;
+    const path = BookPath.make("/mnt/us/documents/Old Book.azw3");
+
+    const deleteId = yield* app.app.queue({
+      payload: { command: Command.cases.DeleteBook.make({ path }) },
+    });
+
+    const rescanId = yield* app.app.queue({ payload: { command: Command.cases.Rescan.make({}) } });
+
+    const pending = yield* pendingCommands;
+    const ours = pending.filter(([id]) => id === deleteId || id === rescanId);
+    expect(ours).toEqual([
+      [deleteId, "delete", path],
+      [rescanId, "rescan"],
+    ]);
+
+    expect(yield* outcomeOf(deleteId)).toEqual(Option.none());
+
+    expect((yield* kindleForm(`/commands/${deleteId}`, [["outcome", "ok"]])).status).toBe(204);
+    expect(
+      (yield* kindleForm(`/commands/${rescanId}`, [
+        ["outcome", "failed"],
+        ["message", "lipc: no such property"],
+      ])).status,
+    ).toBe(204);
+
+    expect((yield* pendingCommands).map(([id]) => id)).not.toContain(deleteId);
+    expect((yield* pendingCommands).map(([id]) => id)).not.toContain(rescanId);
+    expect(yield* outcomeOf(deleteId)).toEqual(Option.some({ outcome: "ok" }));
+    expect(yield* outcomeOf(rescanId)).toEqual(
+      Option.some({ outcome: "failed", message: "lipc: no such property" }),
+    );
+  }),
+);
+
+test(
+  "a cancelled command is never run, even if the Kindle acknowledges it late",
+  Effect.gen(function* () {
+    const app = yield* appClient;
+    const id = yield* app.app.queue({ payload: { command: Command.cases.Rescan.make({}) } });
+
+    yield* app.app.dismiss({ params: { id } });
+
+    expect((yield* pendingCommands).map(([pending]) => pending)).not.toContain(id);
+    expect((yield* kindleForm(`/commands/${id}`, [["outcome", "ok"]])).status).toBe(204);
+    expect(yield* outcomeOf(id)).toBeUndefined();
+  }),
+);
+
+test(
+  "the Worker refuses a delete outside the Kindle's documents folder",
+  Effect.gen(function* () {
+    const { url } = yield* stack;
+
+    for (const path of ["/mnt/us/system/thumbnails/x.jpg", "/mnt/us/documents/../system"]) {
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.post(`${url}/commands`).pipe(
+          HttpClientRequest.bearerToken(yield* appToken),
+          HttpClientRequest.setBody(
+            HttpBody.text(
+              `{"command":{"_tag":"DeleteBook","path":${JSON.stringify(path)}}}`,
+              "application/json",
+            ),
+          ),
+        ),
+      );
+
+      expect(response.status).toBe(400);
+    }
+  }),
+);
+
+test(
+  "the app reads the Kindle's last report, and a malformed report leaves it in place",
+  Effect.gen(function* () {
+    const app = yield* appClient;
+
+    const put = yield* kindleForm("/device", [
+      ["battery", "83"],
+      ["charging", "1"],
+      ["freeKb", "2048000"],
+      ["totalKb", "3188640"],
+      ["firmware", "5.16.2.1.1"],
+      ["books", "/mnt/us/documents/A.azw3\tA Book"],
+      ["books", "/mnt/us/documents/sub/B #2; draft.azw3\tB #2; draft"],
+    ]);
+
+    expect(put.status).toBe(204);
+
+    const device = (yield* app.app.status()).device;
+    expect(Option.map(device, ({ reportedAt: _, ...rest }) => rest)).toEqual(
+      Option.some({
+        battery: 83,
+        charging: true,
+        freeKb: 2048000,
+        totalKb: 3188640,
+        firmware: "5.16.2.1.1",
+        books: [
+          { path: "/mnt/us/documents/A.azw3", title: "A Book" },
+          { path: "/mnt/us/documents/sub/B #2; draft.azw3", title: "B #2; draft" },
+        ],
+      }),
+    );
+
+    expect((yield* kindleForm("/device", [["battery", "full"]])).status).toBe(400);
+    expect((yield* app.app.status()).device).toEqual(device);
+
+    // One book is one form value, not a list, and an empty library sends none.
+    expect((yield* kindleForm("/device", [["books", "/mnt/us/documents/A.azw3\tA"]])).status).toBe(
+      204,
+    );
+    expect(Option.map((yield* app.app.status()).device, ({ books }) => books.length)).toEqual(
+      Option.some(1),
+    );
+    expect((yield* kindleForm("/device", [["battery", "5"]])).status).toBe(204);
+    expect(Option.map((yield* app.app.status()).device, ({ books }) => books)).toEqual(
+      Option.some([]),
+    );
   }),
 );

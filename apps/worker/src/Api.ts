@@ -1,4 +1,8 @@
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as SchemaGetter from "effect/SchemaGetter";
+import * as SchemaTransformation from "effect/SchemaTransformation";
+import * as Struct from "effect/Struct";
 import * as HttpApi from "effect/http-api/HttpApi";
 import * as HttpApiEndpoint from "effect/http-api/HttpApiEndpoint";
 import * as HttpApiError from "effect/http-api/HttpApiError";
@@ -51,10 +55,114 @@ export class EitherAuth extends HttpApiMiddleware.Service<EitherAuth>()("EitherA
   security: { bearer: HttpApiSecurity.bearer },
 }) {}
 
-/** When the Kindle last listed the mailbox, and the items it has not removed yet. */
+// ts.sh deletes by path, so `.` and `..` segments are refused to keep a command inside documents/.
+export const BookPath = Schema.String.check(
+  Schema.isPattern(/^\/mnt\/us\/documents(?:\/(?!\.\.?(?:\/|$))[^/\t\n\r]+)+$/),
+).pipe(Schema.brand("BookPath"));
+
+export type BookPath = typeof BookPath.Type;
+
+/** A book in the Kindle's library, as its cc.db lists it. */
+export const Book = Schema.Struct({ path: BookPath, title: Schema.String });
+
+export type Book = typeof Book.Type;
+
+const TabSeparated = Schema.String.pipe(
+  Schema.decodeTo(Schema.Array(Schema.String), {
+    decode: SchemaGetter.split({ separator: "\t" }),
+    encode: SchemaGetter.transform((fields) => fields.join("\t")),
+  }),
+);
+
+// One "<path>\t<title>" value per book, straight from sqlite3 on the Kindle.
+const BookFromFields = TabSeparated.pipe(
+  Schema.decodeTo(Schema.Tuple([Schema.String, Schema.String])),
+  Schema.decodeTo(
+    Book,
+    SchemaTransformation.transform({
+      decode: ([path, title]) => ({ path, title }),
+      encode: ({ path, title }) => [path, title] as const,
+    }),
+  ),
+);
+
+const IntFromString = Schema.FiniteFromString.check(Schema.isInt());
+
+/**
+ * What ts.sh reports on every wake, as curl's default form encoding. It leaves out a value it
+ * could not read, and the Worker rejects a malformed one.
+ */
+export const DeviceReport = Schema.Struct({
+  battery: Schema.optionalKey(IntFromString.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
+  charging: Schema.optionalKey(
+    Schema.FiniteFromString.pipe(Schema.decodeTo(Schema.BooleanFromBit)),
+  ),
+  freeKb: Schema.optionalKey(IntFromString),
+  totalKb: Schema.optionalKey(IntFromString),
+  firmware: Schema.optionalKey(Schema.String),
+  books: Schema.Array(BookFromFields).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
+});
+
+export type DeviceReport = typeof DeviceReport.Type;
+
+/** The Kindle as of its last report. */
+export const Device = DeviceReport.mapFields((fields) => ({
+  ...Struct.map(fields, Schema.toType),
+  reportedAt: Schema.DateTimeUtcFromString,
+}));
+
+export type Device = typeof Device.Type;
+
+/** Something the app asks the Kindle to do on its next wake. */
+export const Command = Schema.TaggedUnion({
+  DeleteBook: { path: BookPath },
+  Rescan: {},
+});
+
+export type Command = typeof Command.Type;
+
+// Queue time first, like ItemKey, so the Kindle runs commands in the order they were queued.
+export const CommandId = Schema.String.check(Schema.isPattern(/^\d{15}-[0-9a-f]{8}$/)).pipe(
+  Schema.brand("CommandId"),
+);
+
+export type CommandId = typeof CommandId.Type;
+
+export const commandId = (queuedAtMillis: number, random: number) =>
+  CommandId.make(
+    `${String(queuedAtMillis).padStart(15, "0")}-${(random >>> 0).toString(16).padStart(8, "0")}`,
+  );
+
+/** The Worker's clock when the app queued the command, in epoch milliseconds. */
+export const queuedAtOfId = (id: CommandId) => Number(id.slice(0, 15));
+
+/** How a command ended on the Kindle. ts.sh sends it as a form, and R2 keeps it as metadata. */
+export const Outcome = Schema.Union([
+  Schema.Struct({ outcome: Schema.Literal("ok") }),
+  Schema.Struct({ outcome: Schema.Literal("failed"), message: Schema.String }),
+]);
+
+export type Outcome = typeof Outcome.Type;
+
+/** A queued command. `outcome` is none until the Kindle runs it. */
+export const QueuedCommand = Schema.Struct({
+  id: CommandId,
+  queuedAt: Schema.DateTimeUtcFromString,
+  command: Command,
+  outcome: Schema.OptionFromNullOr(Outcome),
+});
+
+export type QueuedCommand = typeof QueuedCommand.Type;
+
+/**
+ * When the Kindle last listed the mailbox, the items it has not removed yet, its last report, and
+ * the commands the app queued in the last 30 days.
+ */
 export const MailboxStatus = Schema.Struct({
   checkedInAt: Schema.OptionFromNullOr(Schema.DateTimeUtcFromString),
   waiting: Schema.Array(ItemId),
+  device: Schema.OptionFromNullOr(Device),
+  commands: Schema.Array(QueuedCommand),
 });
 
 export type MailboxStatus = typeof MailboxStatus.Type;
@@ -81,6 +189,15 @@ export class AppGroup extends HttpApiGroup.make("app")
       error: HttpApiError.NotFound,
     }),
   )
+  .add(
+    // A bare union payload would make the derived client take one overload per command.
+    HttpApiEndpoint.post("queue", "/commands", {
+      payload: Schema.Struct({ command: Command }),
+      success: CommandId.pipe(HttpApiSchema.status(201)),
+    }),
+  )
+  // Cancels a command the Kindle has not run yet, or clears one it has.
+  .add(HttpApiEndpoint.delete("dismiss", "/commands/:id", { params: { id: CommandId } }))
   .middleware(AppAuth) {}
 
 /** The Kindle's side, driven by curl in ts.sh on every wake. */
@@ -97,6 +214,20 @@ export class KindleGroup extends HttpApiGroup.make("kindle")
     HttpApiEndpoint.put("putReport", "/reports/:name", {
       params: { name: ItemName },
       payload: Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array()),
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put("putDevice", "/device", {
+      payload: DeviceReport.pipe(HttpApiSchema.asFormUrlEncoded()),
+    }),
+  )
+  // "<id>\tdelete\t<path>" or "<id>\trescan" lines, oldest first, for commands not yet run.
+  .add(HttpApiEndpoint.get("commands", "/commands/", { success: Text }))
+  // Unknown or already-dismissed ids succeed, so a retried acknowledgement is harmless.
+  .add(
+    HttpApiEndpoint.put("settle", "/commands/:id", {
+      params: { id: CommandId },
+      payload: Outcome.pipe(HttpApiSchema.asFormUrlEncoded()),
     }),
   )
   .middleware(KindleAuth) {}

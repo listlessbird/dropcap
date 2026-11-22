@@ -243,8 +243,8 @@ importers:
         version: 4.0.5
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: ^4.20260601.1
-        version: 4.20260702.1
+        specifier: ^5.20261019.1
+        version: 5.20261019.1
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.5(effect@4.0.5)(redis@6.3.0)
@@ -771,9 +771,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@cloudflare/workers-types@4.20260702.1':
-    resolution: {integrity: sha512-mOhf5TUEB1m2vPrxtqoIGfz0fUC9xyxRDx5gWHy5s+OCo6dcV+g7wI1R7gYCMFohhqF/2y2xeKVwMwCJjfn/WA==}
 
   '@cloudflare/workers-types@5.20261019.1':
     resolution: {integrity: sha512-llvvy7WBVhK+OfykyBkG9A7OgsGvgwHSNyU40XGVkiy/xVFy0t/xflyhEBHT+U59yQECZQbmcZsJtqCNnLpIRg==}
@@ -5668,8 +5665,6 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20260918.1':
     optional: true
-
-  '@cloudflare/workers-types@4.20260702.1': {}
 
   '@cloudflare/workers-types@5.20261019.1': {}
 

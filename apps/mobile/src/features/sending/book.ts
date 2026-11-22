@@ -116,13 +116,16 @@ export const Book = Schema.Struct({
 
 export type Book = typeof Book.Type;
 
+/** The part of the mailbox's status that follows books. */
+export type MailboxCheck = Pick<MailboxStatus, "checkedInAt" | "waiting">;
+
 export type BookEvent = Data.TaggedEnum<{
   Converted: { readonly converted: Converted };
   ConvertFailed: { readonly reason: ConvertFailure };
   Confirmed: {};
   ItemUploaded: { readonly key: ItemKey };
   UploadFailed: { readonly reason: UploadFailure };
-  MailboxChecked: { readonly status: MailboxStatus };
+  MailboxChecked: { readonly status: MailboxCheck };
   SendingCanceled: { readonly at: DateTime.Utc };
   Retried: {};
   Cleared: {};
@@ -161,7 +164,7 @@ const uploading = (converted: Converted, uploaded: ReadonlyArray<ItemKey>): Book
  * left. The mailbox's lifecycle also removes items, after 30 days, but never with a later check-in.
  * Both times come from the Worker's side, so the phone's clock cannot skew the comparison.
  */
-const arrivedAt = (items: Arr.NonEmptyReadonlyArray<ItemKey>, status: MailboxStatus) =>
+const arrivedAt = (items: Arr.NonEmptyReadonlyArray<ItemKey>, status: MailboxCheck) =>
   Option.filter(
     status.checkedInAt,
     (at) =>

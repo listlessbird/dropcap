@@ -13,7 +13,7 @@ import * as HttpRouter from "effect/http/HttpRouter";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import * as HttpApiError from "effect/http-api/HttpApiError";
-import { AppAuth, EitherAuth, ItemId, KindleAuth, MailboxApi, nameOfKey } from "./Api.ts";
+import { AppAuth, Command, EitherAuth, ItemId, KindleAuth, MailboxApi, nameOfKey } from "./Api.ts";
 import { Mailbox, MailboxR2 } from "./Mailbox.ts";
 
 // HttpPlatform.layer needs a FileSystem, which a Worker isolate does not have.
@@ -32,6 +32,12 @@ const HttpPlatformWeb = Layer.succeed(HttpPlatform.HttpPlatform, {
 });
 
 const encodeItemId = Schema.encodeSync(ItemId);
+
+// ts.sh splits each listing line on tabs: the id, the verb, then the verb's argument.
+const commandLine = Command.match({
+  DeleteBook: ({ path }) => `delete\t${path}`,
+  Rescan: () => "rescan",
+});
 
 const sameToken = Redacted.makeEquivalence(Equivalence.String);
 
@@ -81,12 +87,17 @@ export default Cloudflare.Worker(
         )
         .handle("status", () =>
           Effect.all(
-            { checkedInAt: mailbox.checkedInAt, waiting: mailbox.list },
             {
-              concurrency: "unbounded",
+              checkedInAt: mailbox.checkedInAt,
+              waiting: mailbox.list,
+              device: mailbox.device,
+              commands: mailbox.commands,
             },
+            { concurrency: "unbounded" },
           ),
         )
+        .handle("queue", ({ payload }) => mailbox.queue(payload.command))
+        .handle("dismiss", ({ params }) => mailbox.dismiss(params.id))
         .handle("report", ({ params }) =>
           Effect.flatMap(mailbox.getReport(params.name), orNotFound),
         ),
@@ -105,7 +116,17 @@ export default Cloudflare.Worker(
         .handle("download", ({ params }) => Effect.flatMap(mailbox.download(params.id), orNotFound))
         .handleRaw("putReport", ({ params, request }) =>
           Effect.flatMap(webBody(request), (body) => mailbox.putReport(params.name, body)),
-        ),
+        )
+        .handle("putDevice", ({ payload }) => mailbox.putDevice(payload))
+        .handle("commands", () =>
+          Effect.map(mailbox.commands, (commands) =>
+            commands
+              .filter(({ outcome }) => Option.isNone(outcome))
+              .map(({ id, command }) => `${id}\t${commandLine(command)}\n`)
+              .join(""),
+          ),
+        )
+        .handle("settle", ({ params, payload }) => mailbox.settle(params.id, payload)),
     );
 
     const shared = HttpApiBuilder.group(MailboxApi, "shared", (handlers) =>

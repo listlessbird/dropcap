@@ -1,6 +1,8 @@
 import {
   ItemId,
   MailboxApi,
+  type Command,
+  type CommandId,
   type ItemKey,
   type ItemName,
   type MailboxStatus,
@@ -48,6 +50,13 @@ export class MailboxClient extends Context.Service<
     readonly status: (connection: Connection) => Effect.Effect<MailboxStatus, MailboxError>;
     /** Removes a waiting item so the Kindle never downloads it. */
     readonly cancel: (connection: Connection, id: ItemKey) => Effect.Effect<void, MailboxError>;
+    /** Queues a command the Kindle runs the next time it wakes. */
+    readonly queue: (
+      connection: Connection,
+      command: Command,
+    ) => Effect.Effect<CommandId, MailboxError>;
+    /** Cancels a command the Kindle has not run yet, or clears one it has. */
+    readonly dismiss: (connection: Connection, id: CommandId) => Effect.Effect<void, MailboxError>;
     /**
      * Streams the file at `uri` into the mailbox as `name` and returns its key. `onProgress` gets
      * the fraction sent so far. Interrupting aborts the request.
@@ -103,6 +112,18 @@ export const make = Effect.gen(function* () {
     cancel: Effect.fn("MailboxClient.cancel")((connection, id) =>
       request(
         Effect.flatMap(clientFor(connection), (client) => client.shared.remove({ params: { id } })),
+      ),
+    ),
+    queue: Effect.fn("MailboxClient.queue")((connection, command) =>
+      request(
+        Effect.flatMap(clientFor(connection), (client) =>
+          client.app.queue({ payload: { command } }),
+        ),
+      ),
+    ),
+    dismiss: Effect.fn("MailboxClient.dismiss")((connection, id) =>
+      request(
+        Effect.flatMap(clientFor(connection), (client) => client.app.dismiss({ params: { id } })),
       ),
     ),
     // React Native's fetch reports no upload progress and would hold the whole book in memory.

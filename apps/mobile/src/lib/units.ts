@@ -14,3 +14,6 @@ export const fileSize = (bytes: number) => {
 /** "5.7 s" */
 export const seconds = (duration: Duration.Duration) =>
   `${(Duration.toMillis(duration) / 1000).toFixed(1)} s`;
+
+/** "2.1 GB", decimal like `megabytes`. */
+export const gigabytes = (bytes: number) => `${(bytes / 1_000_000_000).toFixed(1)} GB`;
