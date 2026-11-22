@@ -55,7 +55,7 @@ export class Mailbox extends Context.Service<
     readonly settle: (id: CommandId, outcome: Outcome) => Run<void>;
     readonly dismiss: (id: CommandId) => Run<void>;
   }
->()("@kindle-drop/worker/Mailbox") {}
+>()("@dropcap/worker/Mailbox") {}
 
 export const Bucket = Cloudflare.R2.Bucket("Bucket", {
   name: "kindle-mailbox",

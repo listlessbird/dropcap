@@ -1,4 +1,4 @@
-import type { Command, CommandId } from "@kindle-drop/worker/Api";
+import type { Command, CommandId } from "@dropcap/worker/Api";
 import * as Effect from "effect/Effect";
 import { Atom } from "effect/reactivity";
 

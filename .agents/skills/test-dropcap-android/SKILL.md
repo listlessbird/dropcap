@@ -1,9 +1,9 @@
 ---
-name: test-kindle-drop-android
-description: Install and drive kindle-drop's Android dev client on an emulator or device, then capture screenshots as evidence. Use for verifying a user-visible change on a real Android surface.
+name: test-dropcap-android
+description: Install and drive dropcap's Android dev client on an emulator or device, then capture screenshots as evidence. Use for verifying a user-visible change on a real Android surface.
 ---
 
-# Test kindle-drop on Android
+# Test dropcap on Android
 
 Ask before driving a device unless the task already authorizes it. Only touch the `com.listlessbird.kindledrop.dev` package.
 

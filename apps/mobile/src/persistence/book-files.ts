@@ -40,7 +40,7 @@ export class BookFiles extends Context.Service<
     /** Directory names, which are book ids, including any whose record is gone. */
     readonly stored: Effect.Effect<ReadonlyArray<string>>;
   }
->()("@kindle-drop/mobile/persistence/BookFiles") {}
+>()("@dropcap/mobile/persistence/BookFiles") {}
 
 export const make = Effect.gen(function* () {
   // Imported lazily so Node tests can load this module without the native binding.

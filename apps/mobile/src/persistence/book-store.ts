@@ -36,7 +36,7 @@ export class BookStore extends Context.Service<
     readonly save: (book: Book) => Effect.Effect<void, BookStoreError>;
     readonly remove: (id: BookId) => Effect.Effect<void, BookStoreError>;
   }
->()("@kindle-drop/mobile/persistence/BookStore") {}
+>()("@dropcap/mobile/persistence/BookStore") {}
 
 export const make = Effect.gen(function* () {
   const database = yield* MobileDatabase.MobileDatabase;

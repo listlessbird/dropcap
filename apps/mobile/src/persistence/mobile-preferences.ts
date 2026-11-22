@@ -49,7 +49,7 @@ export class MobilePreferencesStore extends Context.Service<
     /** Merges `patch` into the stored preferences and returns the saved result. */
     readonly savePatch: (patch: Preferences) => Effect.Effect<Preferences, MobilePreferencesError>;
   }
->()("@kindle-drop/mobile/persistence/MobilePreferencesStore") {}
+>()("@dropcap/mobile/persistence/MobilePreferencesStore") {}
 
 export const make = Effect.gen(function* () {
   const database = yield* MobileDatabase.MobileDatabase;

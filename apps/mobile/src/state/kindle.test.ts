@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { Command, commandId, type QueuedCommand } from "@kindle-drop/worker/Api";
+import { Command, commandId, type QueuedCommand } from "@dropcap/worker/Api";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

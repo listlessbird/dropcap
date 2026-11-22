@@ -1,6 +1,6 @@
 <img src="apps/mobile/assets/icon-production.png" width="64" height="64" alt="">
 
-# kindle-drop
+# dropcap
 
 **Dropcap** sends books (`EPUB`, `AZW3`, `PDF`, `TXT`) and web articles from Android to a jailbroken stock-reader Kindle over Wi-Fi, with lock-screen covers and no Send to Kindle or USB.
 
@@ -23,7 +23,7 @@ Deploy the Worker and R2 bucket (`kindle-mailbox`):
 
 ```bash
 pnpm install
-pnpm vp run --filter @kindle-drop/worker deploy
+pnpm vp run --filter @dropcap/worker deploy
 ```
 
 ### 2. Set up the Kindle
@@ -49,12 +49,12 @@ For SSH and Taildrop, put the static `arm` Tailscale binaries (`tailscale`, `tai
 
 ### 3. Install and pair the Android app
 
-Download the latest `dropcap-*.apk` from [Releases](https://github.com/listlessbird/kindle-drop/releases) (or build with `pnpm vp run --filter @kindle-drop/mobile eas:android:prod`).
+Download the latest `dropcap-*.apk` from [Releases](https://github.com/listlessbird/dropcap/releases) (or build with `pnpm vp run --filter @dropcap/mobile eas:android:prod`).
 
 Print a pairing QR code on your computer and scan it in Dropcap:
 
 ```bash
-pnpm vp run --filter @kindle-drop/worker pair --server https://<your-worker>.workers.dev
+pnpm vp run --filter @dropcap/worker pair --server https://<your-worker>.workers.dev
 ```
 
 ## Development
@@ -63,14 +63,14 @@ JS-only changes and CI need Node `>= 24.15` and `pnpm` 10 (UniFFI bindings are c
 
 ```bash
 # Local Worker
-APP_TOKEN=dev-app KINDLE_TOKEN=dev-kindle pnpm vp run --filter @kindle-drop/worker dev
+APP_TOKEN=dev-app KINDLE_TOKEN=dev-kindle pnpm vp run --filter @dropcap/worker dev
 
 # Android dev client (fingerprint-cached APK) + Metro
 pnpm vp run mobile:install android
-pnpm vp run --filter @kindle-drop/mobile dev:client
+pnpm vp run --filter @dropcap/mobile dev:client
 
 # Pair dev client on an emulator
-pnpm vp run --filter @kindle-drop/worker pair --server http://10.0.2.2:1337 --key dev-app --scheme kindledrop-dev
+pnpm vp run --filter @dropcap/worker pair --server http://10.0.2.2:1337 --key dev-app --scheme kindledrop-dev
 
 # Format, lint, typecheck, and affected tests
 pnpm vp run check:changed

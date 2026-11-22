@@ -5,7 +5,7 @@ import {
   Command,
   type Outcome,
   type QueuedCommand,
-} from "@kindle-drop/worker/Api";
+} from "@dropcap/worker/Api";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 

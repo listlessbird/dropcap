@@ -72,6 +72,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@dropcap/worker':
+        specifier: workspace:*
+        version: link:../worker
       '@effect/atom-react':
         specifier: 'catalog:'
         version: 4.0.5(effect@4.0.5)(react@19.3.0)(scheduler@0.28.0)
@@ -87,9 +90,6 @@ importers:
       '@kindle-drop/kindle-core':
         specifier: workspace:*
         version: link:modules/kindle-core
-      '@kindle-drop/worker':
-        specifier: workspace:*
-        version: link:../worker
       '@react-navigation/elements':
         specifier: 2.9.45
         version: 2.9.45(@react-navigation/native@7.5.1(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native-safe-area-context@5.10.1(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)

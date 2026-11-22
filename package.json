@@ -1,5 +1,5 @@
 {
-  "name": "@kindle-drop/monorepo",
+  "name": "@dropcap/monorepo",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,6 +1,6 @@
 // Prints the pairing code the phone app scans: a QR code of
 // <scheme>://connect?server=<url>&key=<APP_TOKEN>, and the same link as text.
-// `pnpm vp run --filter @kindle-drop/worker pair` pairs with prod. For a local Worker and the dev
+// `pnpm vp run --filter @dropcap/worker pair` pairs with prod. For a local Worker and the dev
 // client: pair --server http://10.0.2.2:1337 --key dev-app --scheme kindledrop-dev
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";

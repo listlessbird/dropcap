@@ -6,7 +6,7 @@ import {
   type ItemKey,
   type ItemName,
   type MailboxStatus,
-} from "@kindle-drop/worker/Api";
+} from "@dropcap/worker/Api";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -68,7 +68,7 @@ export class MailboxClient extends Context.Service<
       onProgress: (fraction: number) => void,
     ) => Effect.Effect<ItemKey, MailboxError>;
   }
->()("@kindle-drop/mobile/lib/MailboxClient") {}
+>()("@dropcap/mobile/lib/MailboxClient") {}
 
 export const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
