@@ -70,7 +70,7 @@ const config: ExpoConfig = {
   slug: "kindle-drop",
   platforms: ["android"],
   scheme: variant.scheme,
-  version: "0.1.2",
+  version: "0.1.3",
   runtimeVersion: {
     // Dev launches skip fingerprinting. Preview and production OTAs only reach binaries whose native
     // fingerprint matches.
