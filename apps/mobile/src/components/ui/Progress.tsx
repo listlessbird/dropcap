@@ -30,7 +30,7 @@ export function Progress(props: ProgressProps) {
             <LinearProgressIndicator
               progress={value}
               color={colors["--color-primary"]}
-              trackColor={colors["--color-subtle"]}
+              trackColor={colors["--color-subtle-strong"]}
               modifiers={[fillMaxWidth()]}
             />
           </NativeThemeHost>
