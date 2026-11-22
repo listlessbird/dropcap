@@ -33,7 +33,7 @@ export class ConnectionStore extends Context.Service<
     readonly save: (connection: Connection) => Effect.Effect<void, ConnectionStoreError>;
     readonly clear: Effect.Effect<void, ConnectionStoreError>;
   }
->()("@kindle-drop/mobile/persistence/ConnectionStore") {}
+>()("@dropcap/mobile/persistence/ConnectionStore") {}
 
 export const make = Effect.gen(function* () {
   // Imported lazily so Node tests can load this module without the native binding.

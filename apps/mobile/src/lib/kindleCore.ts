@@ -43,7 +43,7 @@ export class KindleCore extends Context.Service<
       outDir: string,
     ) => Effect.Effect<Thumbnail, ConvertError>;
   }
->()("@kindle-drop/mobile/lib/KindleCore") {}
+>()("@dropcap/mobile/lib/KindleCore") {}
 
 export const make = Effect.gen(function* () {
   // Imported lazily: loading the module installs the Rust crate, which Node tests cannot do.

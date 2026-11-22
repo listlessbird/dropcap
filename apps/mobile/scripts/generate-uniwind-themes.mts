@@ -35,7 +35,7 @@ for (const [file, contents] of outputs) {
   if (current === contents) continue;
 
   if (check) {
-    console.error(`${file} is stale. Run vp run --filter @kindle-drop/mobile generate.`);
+    console.error(`${file} is stale. Run vp run --filter @dropcap/mobile generate.`);
     process.exitCode = 1;
     continue;
   }

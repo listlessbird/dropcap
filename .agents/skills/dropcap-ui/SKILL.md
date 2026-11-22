@@ -1,9 +1,9 @@
 ---
-name: kindle-drop-ui
-description: kindle-drop's product design and UI writing guide, covering the agreed screens and flows, the voice, the vocabulary, and the copy for buttons, statuses, errors, and empty states. Use before designing or changing any screen, flow, or user-facing string in apps/mobile, and when reviewing UI work.
+name: dropcap-ui
+description: dropcap's product design and UI writing guide, covering the agreed screens and flows, the voice, the vocabulary, and the copy for buttons, statuses, errors, and empty states. Use before designing or changing any screen, flow, or user-facing string in apps/mobile, and when reviewing UI work.
 ---
 
-# kindle-drop UI
+# dropcap UI
 
 Dropcap sends books from the user's phone to their Kindle. The interface should feel like a well-made system app: calm, quiet, and professional. Every word earns its place.
 
@@ -13,7 +13,7 @@ The design below was researched and agreed with the user on 2026-10-28. Build wh
 
 - The app is **Dropcap**: one word, capital D only. "Kindle" names the device and nothing else, because the app must not borrow Amazon's mark. The package id and `kindledrop://` scheme keep the old name, since the installed app depends on them.
 - The icon is a first-quarter moon over water, and the moon is the D. Its reflection breaks into lines of text. Production shows the full night-sky art. Dev, preview, and the themed icon use the flat mark (`assets/icon-mark.svg`).
-- The layers live in `assets/icon-*.svg` on a shared 108 dp canvas. After editing one, run `pnpm vp run --filter @kindle-drop/mobile icons`. The icon is part of the native fingerprint, so a change needs a native build.
+- The layers live in `assets/icon-*.svg` on a shared 108 dp canvas. After editing one, run `pnpm vp run --filter @dropcap/mobile icons`. The icon is part of the native fingerprint, so a change needs a native build.
 
 ## Writing rules
 
@@ -136,7 +136,7 @@ Write new copy in this voice and add it to the catalog.
 
 ## Verifying UI work
 
-Drive the change on the emulator or a device with the `test-kindle-drop-android` skill. Save screenshots of every state you touched, in light and dark. Read the copy out loud against the rules above before you report.
+Drive the change on the emulator or a device with the `test-dropcap-android` skill. Save screenshots of every state you touched, in light and dark. Read the copy out loud against the rules above before you report.
 
 ## Sources
 

@@ -74,7 +74,7 @@ export class MobileDatabase extends Context.Service<
     ) => Effect.Effect<void, MobileDatabaseError>;
     readonly deleteBook: (id: string) => Effect.Effect<void, MobileDatabaseError>;
   }
->()("@kindle-drop/mobile/persistence/MobileDatabase") {}
+>()("@dropcap/mobile/persistence/MobileDatabase") {}
 
 export const make = Effect.gen(function* () {
   const database = yield* Effect.acquireRelease(

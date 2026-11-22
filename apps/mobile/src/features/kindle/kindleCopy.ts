@@ -4,7 +4,7 @@ import {
   type BookPath,
   type Device,
   type QueuedCommand,
-} from "@kindle-drop/worker/Api";
+} from "@dropcap/worker/Api";
 import type * as Cause from "effect/Cause";
 import type * as DateTime from "effect/DateTime";
 import * as Match from "effect/Match";

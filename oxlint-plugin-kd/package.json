@@ -1,5 +1,5 @@
 {
-  "name": "@kindle-drop/oxlint-plugin-kd",
+  "name": "@dropcap/oxlint-plugin-kd",
   "private": true,
   "type": "module",
   "scripts": {

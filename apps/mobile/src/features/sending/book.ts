@@ -4,7 +4,7 @@ import {
   nameOfKey,
   uploadedAtOfKey,
   type MailboxStatus,
-} from "@kindle-drop/worker/Api";
+} from "@dropcap/worker/Api";
 import * as Arr from "effect/Array";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";

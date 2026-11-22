@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { ItemKey, ItemName, itemKey } from "@kindle-drop/worker/Api";
+import { ItemKey, ItemName, itemKey } from "@dropcap/worker/Api";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Option from "effect/Option";

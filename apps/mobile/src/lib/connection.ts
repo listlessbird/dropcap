@@ -40,7 +40,7 @@ const PAIRING_LINK = /^[a-z][a-z\d+.-]*:\/\/connect\/?\?/i;
 export const isPairingLink = (link: string) => PAIRING_LINK.test(link);
 
 /**
- * `<scheme>://connect?server=<address>&key=<key>`, as `pnpm vp run --filter @kindle-drop/worker pair`
+ * `<scheme>://connect?server=<address>&key=<key>`, as `pnpm vp run --filter @dropcap/worker pair`
  * prints it. Any scheme decodes, so one code pairs the production, preview and dev apps.
  */
 export const PairingLink = Schema.String.check(Schema.isPattern(PAIRING_LINK)).pipe(

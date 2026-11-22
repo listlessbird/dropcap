@@ -1,4 +1,4 @@
-import { ItemName, type ItemKey, type MailboxStatus } from "@kindle-drop/worker/Api";
+import { ItemName, type ItemKey, type MailboxStatus } from "@dropcap/worker/Api";
 import * as Arr from "effect/Array";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
@@ -108,7 +108,7 @@ export class Sender extends Context.Service<
      */
     readonly refresh: Effect.Effect<MailboxStatus, MailboxError | Cause.NoSuchElementError>;
   }
->()("@kindle-drop/mobile/features/sending/Sender") {}
+>()("@dropcap/mobile/features/sending/Sender") {}
 
 export const make = Effect.gen(function* () {
   const store = yield* BookStore;

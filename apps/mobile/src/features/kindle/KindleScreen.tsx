@@ -5,7 +5,7 @@ import {
   type CommandId,
   type Device,
   type QueuedCommand,
-} from "@kindle-drop/worker/Api";
+} from "@dropcap/worker/Api";
 import { useFocusEffect } from "@react-navigation/native";
 import type * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
